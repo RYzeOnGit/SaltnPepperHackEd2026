@@ -11,7 +11,7 @@ A hand-gesture Chrome extension for hands-free web browsing using MediaPipe hand
 - **Navigation Gestures**: Thumbs up and 3-finger swipe for back/forward
 - **YouTube Mode**: Pinch play/pause, 2-finger seek/volume, palm mute
 - **Instagram Reels Mode**: 2-finger next/prev reel and pinch pause/play
-- **Dino Mode**: Pinch jump, fist duck, thumbs-up restart
+- **Dino Mode**: Two-finger jump, three-finger duck-hold, thumbs-up restart, point+hold-pinch UI click
 - **Tab Hotkeys**: `Alt+Shift+L` (next tab), `Alt+Shift+H` (previous tab)
 - **Dwell Click**: Hold pointer steady to auto-click
 - **Calibration + Sensitivity**: Tune hand control precision

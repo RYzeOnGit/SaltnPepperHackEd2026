@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 const GESTURE_LABELS = {
-  pinch: 'Pinch click',
+  pinch: 'Pinch action',
   point: 'Pointing cursor',
-  scroll: 'Two-finger scroll',
+  'scroll-up': 'Two-finger up',
+  'scroll-down': 'Two-finger down',
+  'shorts-prev': 'Shorts previous',
+  'dino-duck': 'Dino duck hold',
   palm: 'Palm pause',
   thumbsup: 'Thumbs up back',
   fist: 'Fist grab scroll',
@@ -14,15 +17,17 @@ const GESTURE_LABELS = {
 const MODE_LABELS = {
   browser: 'Browser',
   youtube: 'YouTube',
+  'youtube-shorts': 'YouTube Shorts',
   instagram: 'Instagram Reels',
   dino: 'Dino',
 };
 
 const MODE_HINTS = {
-  browser: 'Pinch click, 2-finger smooth scroll. Tabs: Alt+Shift+L/H.',
+  browser: 'Point + pinch click. Use fist and move hand up/down for smooth scroll. Tabs: Alt+Shift+L/H.',
   youtube: 'Pinch play/pause, 2-finger left/right seek, up/down volume, palm mute.',
-  instagram: '2-finger up/down changes reels, pinch pauses/plays reel.',
-  dino: 'Pinch jump, fist hold duck, thumbs-up restart.',
+  'youtube-shorts': 'Point + pinch acts like mouse click. Two-finger up = next short, thumb+pinky out = previous short.',
+  instagram: 'Point to controls, pinch to click play/mute. Use fist up/down to move reels.',
+  dino: 'Pinch to jump, 2 fingers hold duck, hold-pinch on UI to click mode buttons.',
 };
 
 export default function HUD({ settings, isTracking, activeGesture, isDwelling, dwellProgress, contextMode }) {

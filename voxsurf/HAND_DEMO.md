@@ -23,13 +23,18 @@
 - `Pinch (thumb + index)`:
   - Browser: click
   - YouTube: play/pause
-  - Instagram Reels: pause/play current reel
+  - YouTube Shorts: mouse-style click at cursor
   - Dino: jump
-- `Two-finger V`:
-  - Browser: smooth inertial vertical scroll
-  - YouTube: left/right = seek 10s, up/down = volume
-  - Instagram Reels: up/down = next/previous reel
-- `Fist` (Dino) -> hold duck
+- `Fist`:
+  - Browser: smooth scroll up/down by moving hand vertically
+- `Two-finger up/down`:
+  - YouTube: seek/volume control gesture
+- `Two-finger up`:
+  - YouTube Shorts: next short (scroll down)
+- `Thumb + pinky out`:
+  - YouTube Shorts: previous short
+- `Two fingers (index + middle)`:
+  - Dino: hold duck
 - `Thumbs up`:
   - Dino: restart
 - `Palm` (YouTube only) -> mute/unmute
@@ -41,8 +46,8 @@
 2. Confirm HUD shows `Mode: YouTube`.
 3. Show controls in this order:
    - `Pinch` -> play/pause
-   - `Two-finger swipe right` -> seek forward 10s
-   - `Two-finger swipe left` -> seek backward 10s
+   - `Two-finger right` -> seek forward 10s
+   - `Two-finger left` -> seek backward 10s
    - `Two-finger up/down` -> volume up/down
    - `Palm` -> mute/unmute
 4. Optional: point + pinch on a UI control (captions, settings) to show precision click still works.
@@ -51,9 +56,17 @@
 
 1. Open a long article or docs page.
 2. Confirm HUD shows `Mode: Browser`.
-3. Hold `Two-finger V` and move hand gently up/down.
+3. Make a `Fist`, then move hand up/down to scroll.
 4. Emphasize that scrolling is continuous and inertial (no jerky jumps).
-5. Show quick stop by opening palm or switching to point.
+5. Show quick stop by opening hand or switching to point.
+
+## 4.2 YouTube Shorts demo flow (30-45s)
+
+1. Open `youtube.com/shorts`.
+2. Confirm HUD shows `Mode: YouTube Shorts`.
+3. Point at Shorts controls (play/mute) and `Pinch` to click.
+4. Raise `Two-finger up` to move to next short.
+5. Show `Thumb + pinky out` to move back to previous short.
 
 ## 4.5 Tab switching demo flow (10-20s)
 
@@ -76,17 +89,18 @@ Steps:
 3. Start game:
    - `Pinch` -> jump
 4. During gameplay:
-   - `Pinch` repeatedly for jumps
-   - Hold `Fist` while obstacle passes to duck
+   - Raise `Two fingers` while obstacle passes to duck (hold = keep ducking)
+   - Use quick `Pinch` for each jump
+   - Use `Point + hold Pinch (~0.3s)` on game UI buttons to change game modes/options
 5. On game over:
    - `Thumbs up` to restart
 
 ## 6. Suggested live narration
 
-- "The system auto-detects context: Browser, YouTube, or Dino."
-- "On YouTube and Instagram Reels, the same core gestures map to media-specific controls."
-- "For normal pages, two-finger movement gives smooth inertial scrolling."
-- "For Dino, pinch is jump and fist is hold-duck, so both actions are one-hand and low-latency."
+- "The system auto-detects context: Browser, YouTube, YouTube Shorts, or Dino."
+- "On YouTube and YouTube Shorts, the same core gestures map to media-specific controls."
+- "For normal pages, fist + vertical motion gives smooth inertial scrolling."
+- "For Dino, pinch jumps and two fingers duck-hold, so controls stay simple."
 
 ## 7. Troubleshooting before presenting
 

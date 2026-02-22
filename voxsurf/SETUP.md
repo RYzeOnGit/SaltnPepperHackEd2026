@@ -51,8 +51,7 @@ Then load the extension from the `dist` folder (it will auto-reload on changes).
    - Pinch thumb+index to click
 
 2. **Smooth Scrolling**
-   - Use two fingers (V shape) to scroll
-   - Make a fist and move up/down for grab-scroll
+   - Make a fist and move up/down for smooth scrolling
 
 3. **YouTube Controls**
    - Pinch to toggle play/pause
@@ -62,12 +61,17 @@ Then load the extension from the `dist` folder (it will auto-reload on changes).
 
 4. **Dino Controls**
    - Open a Dino web version (e.g. chromedino.com)
-   - Pinch to jump, fist-hold to duck, thumbs-up to restart
+   - Pinch (thumb + index) to jump
+   - Two fingers (index + middle) to duck while held
+   - Thumbs-up to restart
+   - Point + hold pinch (~0.3s) to click game mode/options UI
 
-5. **Instagram Reels**
-   - Open instagram.com/reels
-   - Use two-finger up/down to move between reels
-   - Pinch to pause/play current reel
+5. **YouTube Shorts**
+   - Open youtube.com/shorts
+   - Point cursor like a mouse
+   - Pinch to click wherever the cursor is (mouse-style click)
+   - Two fingers up (index + middle) to move to next short (scroll down)
+   - Thumb + pinky out (shaka) to move to previous short
 
 6. **Tab Switching**
    - `Alt+Shift+L` for next tab

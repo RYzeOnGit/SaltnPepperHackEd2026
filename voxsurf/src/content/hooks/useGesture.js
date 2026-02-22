@@ -15,6 +15,19 @@ function isEditableTarget(target) {
   );
 }
 
+function isUiLikeElement(element) {
+  if (!element) return false;
+  if (element.closest('button,[role="button"],a,input,select,textarea,label,[onclick],[data-action]')) {
+    return true;
+  }
+  return false;
+}
+
+const CLICKABLE_SELECTOR =
+  'button,[role="button"],a,input,select,textarea,label,[onclick],[data-action],[aria-label]';
+const SHORTS_UI_CONTROL_PATTERN =
+  /like|dislike|comment|comments|share|subscribe|subscribed|mute|unmute|volume|more|menu|report/i;
+
 function detectContextMode() {
   const host = window.location.hostname.toLowerCase();
   const path = window.location.pathname.toLowerCase();
@@ -30,6 +43,7 @@ function detectContextMode() {
     title.includes('dino');
 
   if (hasDinoCanvas || looksLikeDino) return 'dino';
+  if (host.includes('youtube.com') && path.startsWith('/shorts')) return 'youtube-shorts';
   if (host.includes('youtube.com') || host === 'youtu.be') return 'youtube';
   if (host.includes('instagram.com') && (path.startsWith('/reels') || path.startsWith('/reel/'))) {
     return 'instagram';
@@ -52,14 +66,15 @@ export function useGesture(settings, handLandmarks) {
 
   const dwellStartRef = useRef(null);
 
-  const scrollBaseRef = useRef(null);
   const scrollVelocityRef = useRef(0);
 
   const youtubeBaseRef = useRef(null);
   const lastYouTubeActionTimeRef = useRef(0);
+  const lastDinoJumpTimeRef = useRef(0);
 
-  const reelsAccumRef = useRef(0);
   const lastReelStepTimeRef = useRef(0);
+  const fistBaseYRef = useRef(null);
+  const fistPrevYRef = useRef(null);
 
   const rawGestureRef = useRef('none');
   const rawStreakRef = useRef(0);
@@ -67,6 +82,9 @@ export function useGesture(settings, handLandmarks) {
   const thumbsUpFiredRef = useRef(false);
 
   const dinoDuckRef = useRef(false);
+  const dinoPinchTargetRef = useRef(null);
+  const dinoPinchStartRef = useRef(0);
+  const dinoPinchClickedRef = useRef(false);
   const calibrationRef = useRef(null);
 
   const PINCH_THRESHOLD = 0.055;
@@ -87,11 +105,14 @@ export function useGesture(settings, handLandmarks) {
   const SCROLL_DECAY = 0.84;
   const SCROLL_MAX_STEP = 85;
 
-  const REELS_TRIGGER = 0.055;
-  const REELS_COOLDOWN = 500;
+  const FEED_STEP_COOLDOWN = 520;
+  const REELS_FIST_STEP_THRESHOLD = 0.04;
+  const FIST_SCROLL_DY_GAIN = 1.4;
 
   const YT_SWIPE_THRESHOLD = 0.05;
   const YT_ACTION_COOLDOWN = 300;
+  const DINO_JUMP_COOLDOWN = 260;
+  const DINO_UI_PINCH_HOLD_MS = 320;
 
   const MAP_X_MIN = 0.12;
   const MAP_X_MAX = 0.88;
@@ -143,6 +164,10 @@ export function useGesture(settings, handLandmarks) {
 
   const isExtended = useCallback((lm, tipIdx, pipIdx) => {
     return lm[tipIdx].y < lm[pipIdx].y - EXTENSION_MARGIN;
+  }, []);
+
+  const isInverted = useCallback((lm, tipIdx, pipIdx) => {
+    return lm[tipIdx].y > lm[pipIdx].y + EXTENSION_MARGIN;
   }, []);
 
   const isThumbExtended = useCallback((lm) => {
@@ -202,37 +227,6 @@ export function useGesture(settings, handLandmarks) {
     return () => setDinoDuck(false);
   }, [setDinoDuck]);
 
-  const getCenterVideo = useCallback(() => {
-    const videos = Array.from(document.querySelectorAll('video'));
-    if (videos.length === 0) return null;
-
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2;
-
-    let best = null;
-    let bestScore = -Infinity;
-
-    videos.forEach((video) => {
-      const rect = video.getBoundingClientRect();
-      const visibleW = Math.max(0, Math.min(rect.right, window.innerWidth) - Math.max(rect.left, 0));
-      const visibleH = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0));
-      const visibleArea = visibleW * visibleH;
-      if (visibleArea <= 0) return;
-
-      const vx = rect.left + rect.width / 2;
-      const vy = rect.top + rect.height / 2;
-      const dist = Math.hypot(vx - cx, vy - cy);
-      const score = visibleArea - dist * 300;
-
-      if (score > bestScore) {
-        bestScore = score;
-        best = video;
-      }
-    });
-
-    return best;
-  }, []);
-
   const toggleYouTubePlayPause = useCallback(() => {
     const video = document.querySelector('video');
     if (!video) return;
@@ -268,29 +262,67 @@ export function useGesture(settings, handLandmarks) {
     video.muted = !video.muted;
   }, []);
 
-  const toggleReelPlayPause = useCallback(() => {
-    const video = getCenterVideo();
+  const toggleShortsPlayPause = useCallback(() => {
+    const video =
+      document.querySelector('ytd-reel-video-renderer video') ||
+      document.querySelector('video');
     if (!video) return;
 
     if (video.paused) {
-      video.play().catch(() => {});
+      video.play().catch(() => {
+        tapKey('k', 'KeyK', 75);
+      });
     } else {
       video.pause();
     }
-  }, [getCenterVideo]);
+  }, [tapKey]);
 
-  const stepReels = useCallback((direction) => {
+  const stepVerticalFeed = useCallback((direction) => {
     const step = Math.round(window.innerHeight * 0.9);
     window.scrollBy({ top: direction * step, behavior: 'smooth' });
   }, []);
 
-  const handleClick = useCallback(() => {
-    const x = lastCursorRef.current.x;
-    const y = lastCursorRef.current.y;
-    const element = document.elementFromPoint(x, y);
-    if (!element) return;
+  const stepYouTubeShort = useCallback(
+    (direction) => {
+      if (direction > 0) {
+        tapKey('ArrowDown', 'ArrowDown', 40);
+      } else {
+        tapKey('ArrowUp', 'ArrowUp', 38);
+      }
+      // Fallback for layouts that still react to scroll.
+      stepVerticalFeed(direction);
+    },
+    [tapKey, stepVerticalFeed]
+  );
 
-    element.click();
+  const getPalmCenterY = useCallback((lm) => {
+    // Average palm anchors for stable vertical motion tracking.
+    return (lm[0].y + lm[5].y + lm[9].y + lm[13].y + lm[17].y) / 5;
+  }, []);
+
+  const handleClick = useCallback((x, y) => {
+    const clickX = x ?? lastCursorRef.current.x;
+    const clickY = y ?? lastCursorRef.current.y;
+    const element = document.elementFromPoint(clickX, clickY);
+    if (!element) return false;
+
+    const clickTarget = element.closest(CLICKABLE_SELECTOR) || element;
+
+    const evtOpts = { bubbles: true, cancelable: true, clientX: clickX, clientY: clickY, view: window };
+    if (typeof PointerEvent !== 'undefined') {
+      clickTarget.dispatchEvent(
+        new PointerEvent('pointerdown', { ...evtOpts, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1 })
+      );
+    }
+    clickTarget.dispatchEvent(new MouseEvent('mousedown', evtOpts));
+    if (typeof PointerEvent !== 'undefined') {
+      clickTarget.dispatchEvent(
+        new PointerEvent('pointerup', { ...evtOpts, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 0 })
+      );
+    }
+    clickTarget.dispatchEvent(new MouseEvent('mouseup', evtOpts));
+    clickTarget.dispatchEvent(new MouseEvent('click', evtOpts));
+    clickTarget.click?.();
 
     chrome.storage.local.get(['voxsurfStats'], (result) => {
       if (result.voxsurfStats) {
@@ -302,6 +334,8 @@ export function useGesture(settings, handLandmarks) {
         });
       }
     });
+
+    return true;
   }, []);
 
   const classifyGesture = useCallback(
@@ -311,20 +345,36 @@ export function useGesture(settings, handLandmarks) {
       const middleUp = isExtended(lm, 12, 10);
       const ringUp = isExtended(lm, 16, 14);
       const pinkyUp = isExtended(lm, 20, 18);
+
+      const indexDown = isInverted(lm, 8, 6);
+      const middleDown = isInverted(lm, 12, 10);
+
       const extendedCount = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
 
       const pinchDist = dist2D(lm[4], lm[8]);
       const pinchNow = pinchActiveRef.current ? pinchDist < PINCH_RELEASE : pinchDist < PINCH_THRESHOLD;
 
       if (pinchNow) return 'pinch';
+      if (contextMode === 'dino' && indexUp && middleUp && !ringUp && !pinkyUp) return 'dino-duck';
+      if (contextMode === 'youtube' && !thumbUp && indexDown && middleDown && !ringUp && !pinkyUp) {
+        return 'scroll-down';
+      }
+      if (contextMode === 'youtube' && indexUp && middleUp && !ringUp && !pinkyUp) {
+        return 'scroll-up';
+      }
+      if (contextMode === 'youtube-shorts' && thumbUp && pinkyUp && !indexUp && !middleUp && !ringUp) {
+        return 'shorts-prev';
+      }
+      if (contextMode === 'youtube-shorts' && indexUp && middleUp && !thumbUp) {
+        return 'scroll-up';
+      }
       if (!thumbUp && extendedCount === 0) return 'fist';
-      if (indexUp && middleUp && !ringUp && !pinkyUp) return 'scroll';
       if (thumbUp && extendedCount >= 4) return 'palm';
       if (thumbUp && extendedCount === 0) return 'thumbsup';
       if (indexUp) return 'point';
       return 'none';
     },
-    [isExtended, isThumbExtended, dist2D]
+    [contextMode, isExtended, isInverted, isThumbExtended, dist2D]
   );
 
   const applyBrowserSmoothScroll = useCallback((dy) => {
@@ -346,18 +396,6 @@ export function useGesture(settings, handLandmarks) {
     }
   }, []);
 
-  const performPrimaryAction = useCallback(() => {
-    if (contextMode === 'dino') {
-      tapKey(' ', 'Space', 32);
-    } else if (contextMode === 'youtube') {
-      toggleYouTubePlayPause();
-    } else if (contextMode === 'instagram') {
-      toggleReelPlayPause();
-    } else {
-      handleClick();
-    }
-  }, [contextMode, tapKey, toggleYouTubePlayPause, toggleReelPlayPause, handleClick]);
-
   useEffect(() => {
     if (!handLandmarks || !settings.handEnabled) {
       rawGestureRef.current = 'none';
@@ -365,10 +403,10 @@ export function useGesture(settings, handLandmarks) {
       confirmedGestureRef.current = 'none';
       setActiveGesture('none');
 
-      scrollBaseRef.current = null;
       youtubeBaseRef.current = null;
-      reelsAccumRef.current = 0;
       scrollVelocityRef.current = 0;
+      fistBaseYRef.current = null;
+      fistPrevYRef.current = null;
 
       pinchActiveRef.current = false;
       setIsPinching(false);
@@ -379,6 +417,9 @@ export function useGesture(settings, handLandmarks) {
 
       thumbsUpFiredRef.current = false;
       setDinoDuck(false);
+      dinoPinchTargetRef.current = null;
+      dinoPinchStartRef.current = 0;
+      dinoPinchClickedRef.current = false;
       return;
     }
 
@@ -403,8 +444,12 @@ export function useGesture(settings, handLandmarks) {
       setActiveGesture(rawGesture);
       justConfirmed = true;
 
-      if (rawGesture !== 'scroll') {
-        scrollBaseRef.current = null;
+      if (
+        rawGesture !== 'scroll-up' &&
+        rawGesture !== 'scroll-down' &&
+        rawGesture !== 'fist' &&
+        rawGesture !== 'dino-duck'
+      ) {
         youtubeBaseRef.current = null;
       }
       if (rawGesture !== 'point') {
@@ -418,6 +463,13 @@ export function useGesture(settings, handLandmarks) {
       if (rawGesture !== 'pinch') {
         pinchActiveRef.current = false;
         setIsPinching(false);
+        dinoPinchTargetRef.current = null;
+        dinoPinchStartRef.current = 0;
+        dinoPinchClickedRef.current = false;
+      }
+      if (rawGesture !== 'fist') {
+        fistBaseYRef.current = null;
+        fistPrevYRef.current = null;
       }
     }
 
@@ -429,40 +481,94 @@ export function useGesture(settings, handLandmarks) {
             pinchActiveRef.current = true;
             lastPinchTimeRef.current = now;
             setIsPinching(true);
-            performPrimaryAction();
+
+            if (contextMode === 'dino') {
+              const target = document.elementFromPoint(
+                lastCursorRef.current.x,
+                lastCursorRef.current.y
+              );
+              dinoPinchTargetRef.current = target;
+              dinoPinchStartRef.current = now;
+              dinoPinchClickedRef.current = false;
+
+              if (!isUiLikeElement(target) && now - lastDinoJumpTimeRef.current > DINO_JUMP_COOLDOWN) {
+                tapKey(' ', 'Space', 32);
+                lastDinoJumpTimeRef.current = now;
+              }
+            } else if (contextMode === 'youtube') {
+              toggleYouTubePlayPause();
+            } else if (contextMode === 'youtube-shorts') {
+              const indexTip = lm[8];
+              const { x: rawTargetX, y: rawTargetY } = mapToScreen(indexTip.x, indexTip.y);
+              const sensitivity = settings.sensitivity || 1;
+              const centerX = window.innerWidth / 2;
+              const centerY = window.innerHeight / 2;
+              const clickX = clamp(
+                centerX + (rawTargetX - centerX) * sensitivity,
+                0,
+                window.innerWidth
+              );
+              const clickY = clamp(
+                centerY + (rawTargetY - centerY) * sensitivity,
+                0,
+                window.innerHeight
+              );
+
+              lastCursorRef.current = { x: clickX, y: clickY };
+              setCursorX(clickX);
+              setCursorY(clickY);
+
+              const element = document.elementFromPoint(clickX, clickY);
+              const interactiveTarget = element?.closest(CLICKABLE_SELECTOR);
+
+              const ariaLabel = (
+                interactiveTarget?.getAttribute('aria-label') ||
+                interactiveTarget?.getAttribute('title') ||
+                ''
+              ).trim();
+
+              if (interactiveTarget && SHORTS_UI_CONTROL_PATTERN.test(ariaLabel)) {
+                handleClick(clickX, clickY);
+              } else {
+                // Non-control areas should always behave as play/pause.
+                toggleShortsPlayPause();
+              }
+            } else {
+              handleClick();
+            }
+          }
+        } else if (contextMode === 'dino') {
+          const target = dinoPinchTargetRef.current;
+          const current = document.elementFromPoint(
+            lastCursorRef.current.x,
+            lastCursorRef.current.y
+          );
+
+          if (current !== target) {
+            dinoPinchTargetRef.current = current;
+            dinoPinchStartRef.current = Date.now();
+            dinoPinchClickedRef.current = false;
+          } else if (
+            current &&
+            isUiLikeElement(current) &&
+            !dinoPinchClickedRef.current &&
+            Date.now() - dinoPinchStartRef.current >= DINO_UI_PINCH_HOLD_MS
+          ) {
+            handleClick();
+            dinoPinchClickedRef.current = true;
           }
         }
         break;
       }
 
-      case 'scroll': {
-        if (contextMode === 'browser') {
-          const avgY = (lm[8].y + lm[12].y) / 2;
-          if (scrollBaseRef.current === null) {
-            scrollBaseRef.current = avgY;
-          } else {
-            const dy = avgY - scrollBaseRef.current;
-            scrollBaseRef.current = avgY;
-            applyBrowserSmoothScroll(dy);
-          }
-        } else if (contextMode === 'instagram') {
-          const avgY = (lm[8].y + lm[12].y) / 2;
-          if (scrollBaseRef.current === null) {
-            scrollBaseRef.current = avgY;
-          } else {
-            const dy = avgY - scrollBaseRef.current;
-            scrollBaseRef.current = avgY;
-            reelsAccumRef.current += dy;
-
-            const now = Date.now();
-            if (
-              Math.abs(reelsAccumRef.current) > REELS_TRIGGER &&
-              now - lastReelStepTimeRef.current > REELS_COOLDOWN
-            ) {
-              stepReels(Math.sign(reelsAccumRef.current));
-              lastReelStepTimeRef.current = now;
-              reelsAccumRef.current = 0;
-            }
+      case 'scroll-up':
+      case 'scroll-down': {
+        if (contextMode === 'youtube-shorts') {
+          const now = Date.now();
+          if (confirmedGesture === 'scroll-up' && now - lastReelStepTimeRef.current > FEED_STEP_COOLDOWN) {
+            // Shorts request: two-finger up means move down to next short.
+            stepYouTubeShort(1);
+            lastReelStepTimeRef.current = now;
           }
         } else if (contextMode === 'youtube') {
           const avgX = (lm[8].x + lm[12].x) / 2;
@@ -487,6 +593,54 @@ export function useGesture(settings, handLandmarks) {
             youtubeBaseRef.current = { x: avgX, y: avgY };
           }
         }
+        break;
+      }
+
+      case 'shorts-prev': {
+        if (contextMode === 'youtube-shorts') {
+          const now = Date.now();
+          if (justConfirmed && now - lastReelStepTimeRef.current > FEED_STEP_COOLDOWN) {
+            // Shorts previous short on thumb + pinky out.
+            stepYouTubeShort(-1);
+            lastReelStepTimeRef.current = now;
+          }
+        }
+        break;
+      }
+
+      case 'fist': {
+        const fistY = getPalmCenterY(lm);
+
+        if (contextMode === 'browser') {
+          if (fistPrevYRef.current === null) {
+            fistPrevYRef.current = fistY;
+          } else {
+            const dy = (fistY - fistPrevYRef.current) * FIST_SCROLL_DY_GAIN;
+            applyBrowserSmoothScroll(dy);
+            fistPrevYRef.current = fistY;
+          }
+        } else if (contextMode === 'instagram') {
+          if (fistBaseYRef.current === null) {
+            fistBaseYRef.current = fistY;
+          }
+
+          const dyFromBase = fistY - fistBaseYRef.current;
+          const now = Date.now();
+          if (
+            Math.abs(dyFromBase) >= REELS_FIST_STEP_THRESHOLD &&
+            now - lastReelStepTimeRef.current > FEED_STEP_COOLDOWN
+          ) {
+            const direction = dyFromBase > 0 ? 1 : -1;
+            stepVerticalFeed(direction);
+            lastReelStepTimeRef.current = now;
+            fistBaseYRef.current = fistY;
+          }
+        }
+        break;
+      }
+
+      case 'dino-duck': {
+        setDinoDuck(true);
         break;
       }
 
@@ -548,13 +702,6 @@ export function useGesture(settings, handLandmarks) {
         break;
       }
 
-      case 'fist': {
-        if (contextMode === 'dino') {
-          setDinoDuck(true);
-        }
-        break;
-      }
-
       case 'thumbsup': {
         if (contextMode === 'dino' && !thumbsUpFiredRef.current) {
           thumbsUpFiredRef.current = true;
@@ -567,17 +714,25 @@ export function useGesture(settings, handLandmarks) {
         break;
     }
 
-    if (contextMode === 'browser' && confirmedGesture !== 'scroll') {
+    if (
+      contextMode === 'browser' &&
+      confirmedGesture !== 'fist'
+    ) {
       decayBrowserScroll();
     }
 
-    if (contextMode !== 'dino' || confirmedGesture !== 'fist') {
+    if (
+      contextMode !== 'dino' || confirmedGesture !== 'dino-duck'
+    ) {
       setDinoDuck(false);
     }
 
     if (confirmedGesture !== 'pinch' && pinchActiveRef.current) {
       pinchActiveRef.current = false;
       setIsPinching(false);
+      dinoPinchTargetRef.current = null;
+      dinoPinchStartRef.current = 0;
+      dinoPinchClickedRef.current = false;
     }
   }, [
     handLandmarks,
@@ -586,13 +741,15 @@ export function useGesture(settings, handLandmarks) {
     contextMode,
     classifyGesture,
     mapToScreen,
-    performPrimaryAction,
     applyBrowserSmoothScroll,
     decayBrowserScroll,
-    stepReels,
+    stepVerticalFeed,
+    stepYouTubeShort,
+    getPalmCenterY,
     seekYouTube,
     adjustYouTubeVolume,
     toggleYouTubeMute,
+    toggleShortsPlayPause,
     handleClick,
     tapKey,
     setDinoDuck,
