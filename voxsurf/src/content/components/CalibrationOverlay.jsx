@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
+const glassBase = {
+  background: 'rgba(20, 20, 35, 0.65)',
+  backdropFilter: 'blur(24px)',
+  WebkitBackdropFilter: 'blur(24px)',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif',
+};
+
 export default function CalibrationOverlay({ isActive, mode = 'hand', onComplete, onCancel }) {
   const [currentPoint, setCurrentPoint] = useState(0);
   const [isCollecting, setIsCollecting] = useState(false);
@@ -19,16 +28,13 @@ export default function CalibrationOverlay({ isActive, mode = 'hand', onComplete
   useEffect(() => {
     if (!isActive) return;
 
-    // Start collecting data for current point after a delay
     const timer = setTimeout(() => {
       setIsCollecting(true);
-      // Collect for 2 seconds
       setTimeout(() => {
         setIsCollecting(false);
         if (currentPoint < calibrationPoints.length - 1) {
           setCurrentPoint(currentPoint + 1);
         } else {
-          // Calibration complete
           onComplete();
         }
       }, 2000);
@@ -42,6 +48,7 @@ export default function CalibrationOverlay({ isActive, mode = 'hand', onComplete
   const current = calibrationPoints[currentPoint];
   const screenX = current.x * window.innerWidth;
   const screenY = current.y * window.innerHeight;
+  const accentColor = isCollecting ? '#34C759' : '#007AFF';
 
   return (
     <div
@@ -51,57 +58,84 @@ export default function CalibrationOverlay({ isActive, mode = 'hand', onComplete
         left: 0,
         width: '100%',
         height: '100%',
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        background: 'rgba(0, 0, 0, 0.7)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         zIndex: 2147483646,
         pointerEvents: 'auto',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
       }}
     >
+      {/* Calibration dot */}
       <div
         style={{
           position: 'absolute',
           left: `${screenX}px`,
           top: `${screenY}px`,
           transform: 'translate(-50%, -50%)',
-          width: '60px',
-          height: '60px',
+          width: '56px',
+          height: '56px',
           borderRadius: '50%',
-          border: `4px solid ${isCollecting ? '#10B981' : '#3B82F6'}`,
-          backgroundColor: isCollecting ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+          border: `2px solid ${accentColor}`,
+          background: isCollecting
+            ? 'rgba(52, 199, 89, 0.12)'
+            : 'rgba(0, 122, 255, 0.12)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '24px',
-          fontWeight: 'bold',
+          fontSize: '18px',
+          fontWeight: 600,
           color: 'white',
-          boxShadow: `0 0 30px ${isCollecting ? '#10B981' : '#3B82F6'}`,
-          animation: isCollecting ? 'pulse 1s ease-in-out infinite' : 'none',
+          boxShadow: `0 0 24px ${accentColor}50, 0 0 48px ${accentColor}20`,
+          animation: isCollecting ? 'calibPulse 1.2s ease-in-out infinite' : 'none',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
         }}
       >
         {current.label}
       </div>
 
+      {/* Center info card */}
       <div
         style={{
           position: 'absolute',
-          top: '50%',
+          bottom: '80px',
           left: '50%',
-          transform: 'translate(-50%, -50%)',
+          transform: 'translateX(-50%)',
           textAlign: 'center',
-          color: 'white',
-          fontSize: '18px',
-          marginTop: '100px',
+          ...glassBase,
+          borderRadius: '16px',
+          padding: '20px 32px',
+          minWidth: '280px',
         }}
       >
-        <div style={{ marginBottom: '10px' }}>
+        <div style={{ color: 'white', fontSize: '15px', fontWeight: 500, marginBottom: '6px' }}>
           Point {currentPoint + 1} of {calibrationPoints.length}
         </div>
-        <div style={{ fontSize: '14px', color: '#9CA3AF' }}>
+        <div style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.4)', lineHeight: '1.4' }}>
           {isCollecting
-            ? 'Hold your hand steady on the dot while we collect tracking data...'
-            : 'Move your hand so the cursor lands on each dot.'}
+            ? 'Hold steady while we capture tracking data...'
+            : 'Move your hand cursor onto the dot.'}
+        </div>
+        {/* Progress bar */}
+        <div style={{
+          marginTop: '12px',
+          height: '3px',
+          borderRadius: '2px',
+          background: 'rgba(255,255,255,0.08)',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            height: '3px',
+            borderRadius: '2px',
+            background: '#007AFF',
+            width: `${((currentPoint + (isCollecting ? 0.5 : 0)) / calibrationPoints.length) * 100}%`,
+            transition: 'width 0.4s ease',
+          }} />
         </div>
       </div>
 
+      {/* Cancel button */}
       <button
         onClick={onCancel}
         style={{
@@ -109,13 +143,14 @@ export default function CalibrationOverlay({ isActive, mode = 'hand', onComplete
           top: '20px',
           right: '20px',
           padding: '10px 20px',
-          backgroundColor: '#EF4444',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
+          ...glassBase,
+          background: 'rgba(255, 59, 48, 0.15)',
+          border: '1px solid rgba(255, 59, 48, 0.3)',
+          borderRadius: '12px',
+          color: '#FF3B30',
           cursor: 'pointer',
-          fontSize: '14px',
-          fontWeight: 'bold',
+          fontSize: '13px',
+          fontWeight: 500,
         }}
       >
         Cancel
@@ -123,14 +158,14 @@ export default function CalibrationOverlay({ isActive, mode = 'hand', onComplete
 
       <style>
         {`
-          @keyframes pulse {
+          @keyframes calibPulse {
             0%, 100% {
               transform: translate(-50%, -50%) scale(1);
               opacity: 1;
             }
             50% {
-              transform: translate(-50%, -50%) scale(1.2);
-              opacity: 0.8;
+              transform: translate(-50%, -50%) scale(1.12);
+              opacity: 0.85;
             }
           }
         `}

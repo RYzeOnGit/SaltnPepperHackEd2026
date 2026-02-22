@@ -41,8 +41,7 @@ export default function CameraPreview({ settings }) {
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
 
-        // Draw placeholder for hand tracking preview
-        ctx.strokeStyle = '#3B82F6';
+        ctx.strokeStyle = '#007AFF';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(canvas.width / 2, canvas.height / 2, 50, 0, Math.PI * 2);
@@ -66,16 +65,16 @@ export default function CameraPreview({ settings }) {
 
   if (!settings.handEnabled) {
     return (
-      <div className="bg-gray-800 rounded-lg p-6">
-        <p className="text-gray-400 text-center">Enable hand mode to see camera preview</p>
+      <div className="glass-panel p-5">
+        <p className="text-sm text-white/30 text-center">Enable hand mode to see camera preview</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h2 className="text-xl font-semibold mb-4">Camera Preview</h2>
-      <div className="relative bg-black rounded overflow-hidden">
+    <div className="glass-panel p-4">
+      <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-3 px-1">Camera</h2>
+      <div className="relative overflow-hidden rounded-apple">
         <video
           ref={videoRef}
           autoPlay
@@ -86,16 +85,26 @@ export default function CameraPreview({ settings }) {
         />
         <canvas
           ref={canvasRef}
-          className="w-full h-auto"
+          className="w-full h-auto rounded-apple"
+          style={{ background: 'rgba(0,0,0,0.4)' }}
         />
         {isActive && (
-          <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-            ● Active
+          <div
+            className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-capsule text-[11px] font-medium text-white"
+            style={{
+              background: 'rgba(52, 199, 89, 0.25)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(52, 199, 89, 0.3)',
+            }}
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-apple-green animate-status-pulse" />
+            Active
           </div>
         )}
       </div>
-      <p className="text-sm text-gray-400 mt-2">
-        Hand tracking preview is active while gesture mode is enabled
+      <p className="text-[11px] text-white/25 mt-2.5 px-1 leading-relaxed">
+        Hand tracking preview while gesture mode is enabled.
       </p>
     </div>
   );

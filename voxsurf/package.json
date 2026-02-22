@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "bash scripts/sync-dist-to-windows.sh",
+    "sync": "bash scripts/sync-dist-to-windows.sh",
     "test": "node --test tests/**/*.test.mjs",
     "preview": "vite preview"
   },

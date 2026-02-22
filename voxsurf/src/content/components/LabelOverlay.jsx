@@ -22,21 +22,30 @@ function LabelOverlay({ elements, gazeTarget, settings }) {
         const badgeStyle = {
           position: 'absolute',
           left: `${item.rect.left}px`,
-          top: `${item.rect.top - 25}px`,
-          backgroundColor: isGazed ? '#3B82F6' : '#F59E0B',
+          top: `${item.rect.top - 26}px`,
+          background: isGazed
+            ? 'rgba(0, 122, 255, 0.55)'
+            : 'rgba(30, 30, 45, 0.6)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: isGazed
+            ? '1px solid rgba(0, 122, 255, 0.4)'
+            : '1px solid rgba(255, 255, 255, 0.1)',
           color: 'white',
-          padding: isExpanded ? '4px 8px' : '2px 6px',
-          borderRadius: '12px',
-          fontSize: isExpanded ? '12px' : '11px',
-          fontWeight: 'bold',
+          padding: isExpanded ? '4px 10px' : '3px 8px',
+          borderRadius: '999px',
+          fontSize: isExpanded ? '11px' : '10px',
+          fontWeight: 600,
+          fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
           zIndex: 2147483646,
           pointerEvents: 'none',
-          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-          transition: 'all 0.15s ease',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+          transition: 'all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
           maxWidth: isExpanded ? '200px' : 'auto',
           whiteSpace: isExpanded ? 'normal' : 'nowrap',
           overflow: isExpanded ? 'visible' : 'hidden',
           textOverflow: isExpanded ? 'clip' : 'ellipsis',
+          letterSpacing: '-0.01em',
         };
 
         const labelText = isExpanded

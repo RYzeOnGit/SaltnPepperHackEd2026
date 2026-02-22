@@ -34,6 +34,12 @@ function normalizeSettings(incoming) {
   return normalized;
 }
 
+const TABS = [
+  { id: 'home', label: 'Home' },
+  { id: 'hands', label: 'Hands' },
+  { id: 'stats', label: 'Stats' },
+];
+
 export default function Popup() {
   const [activeTab, setActiveTab] = useState('home');
   const [settings, setSettings] = useState({
@@ -68,67 +74,66 @@ export default function Popup() {
   };
 
   return (
-    <div className="w-full h-full bg-gray-900 text-white">
+    <div className="w-full h-full min-h-[600px] text-white font-sf"
+      style={{ background: 'linear-gradient(145deg, #0a0a0f 0%, #12121f 50%, #1a1a2e 100%)' }}>
       <div className="flex flex-col h-full">
-        <header className="bg-indigo-600 p-4 text-center">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-left">
-              <h1 className="text-2xl font-bold">🖐️ VoxSurf</h1>
-              <p className="text-sm text-indigo-200">Hand + voice control mode</p>
+
+        {/* Header */}
+        <header className="glass-panel px-5 py-4 mx-3 mt-3" style={{ borderRadius: '16px' }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight text-white">VoxSurf</h1>
+              <p className="text-xs text-white/40 mt-0.5 font-normal">Hand + voice control</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-indigo-100">Voice</span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs text-white/40 font-medium">Voice</span>
               <button
                 onClick={() => updateSettings({ voiceEnabled: !settings.voiceEnabled })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  settings.voiceEnabled ? 'bg-emerald-500' : 'bg-indigo-300/40'
-                }`}
+                className="apple-toggle"
+                data-active={settings.voiceEnabled ? 'true' : 'false'}
                 title={settings.voiceEnabled ? 'Disable voice agent' : 'Enable voice agent'}
                 aria-label={settings.voiceEnabled ? 'Disable voice agent' : 'Enable voice agent'}
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    settings.voiceEnabled ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
+                <span className="apple-toggle-knob" />
               </button>
             </div>
           </div>
         </header>
 
-        <div className="flex border-b border-gray-700 overflow-x-auto">
-          {[
-            { id: 'home', label: 'Home' },
-            { id: 'hands', label: 'Hands' },
-            { id: 'stats', label: 'Stats' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-2 text-sm font-medium ${
-                activeTab === tab.id
-                  ? 'bg-indigo-600 text-white border-b-2 border-indigo-400'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Segmented Control */}
+        <div className="px-3 pt-3">
+          <div className="segmented-control">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="segmented-control-btn"
+                data-active={activeTab === tab.id ? 'true' : 'false'}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {activeTab === 'home' && (
-            <HomeTab settings={settings} updateSettings={updateSettings} />
-          )}
-          {activeTab === 'hands' && (
-            <>
-              <EyeSettings settings={settings} updateSettings={updateSettings} />
-              <CameraPreview settings={settings} />
-            </>
-          )}
-          {activeTab === 'stats' && (
-            <StatsPanel settings={settings} />
-          )}
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-3 py-3">
+          <div className="animate-fade-in">
+            {activeTab === 'home' && (
+              <HomeTab settings={settings} updateSettings={updateSettings} />
+            )}
+            {activeTab === 'hands' && (
+              <>
+                <EyeSettings settings={settings} updateSettings={updateSettings} />
+                <div className="mt-3">
+                  <CameraPreview settings={settings} />
+                </div>
+              </>
+            )}
+            {activeTab === 'stats' && (
+              <StatsPanel settings={settings} />
+            )}
+          </div>
         </div>
       </div>
     </div>

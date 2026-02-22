@@ -70,108 +70,97 @@ export default function HomeTab({ settings, updateSettings }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Live Status</h2>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${liveStatus.handTracking ? 'bg-green-400 animate-pulse' : 'bg-gray-500'}`} />
-              <span>Hand Tracking</span>
-            </div>
-            <span className={liveStatus.handTracking ? 'text-green-400' : 'text-gray-400'}>
-              {liveStatus.handTracking ? 'Active' : 'Inactive'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>Current Gesture</span>
-            <span className="text-indigo-300 capitalize">{liveStatus.activeGesture || 'none'}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>Context Mode</span>
-            <span className="text-emerald-300 capitalize">{liveStatus.contextMode || 'browser'}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>Voice Agent</span>
-            <span
-              className={
-                liveStatus.voiceEnabled && liveStatus.voiceListening
-                  ? 'text-green-400'
-                  : liveStatus.voiceEnabled
-                    ? 'text-yellow-300'
-                    : 'text-gray-400'
-              }
-            >
-              {liveStatus.voiceEnabled
+    <div className="space-y-3">
+
+      {/* Live Status */}
+      <div className="glass-panel p-5">
+        <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">Live Status</h2>
+        <div className="space-y-0">
+          <StatusRow
+            label="Hand Tracking"
+            value={liveStatus.handTracking ? 'Active' : 'Inactive'}
+            active={liveStatus.handTracking}
+            dot
+          />
+          <div className="glass-divider" />
+          <StatusRow
+            label="Gesture"
+            value={liveStatus.activeGesture || 'none'}
+            valueClass="text-apple-blue capitalize"
+          />
+          <div className="glass-divider" />
+          <StatusRow
+            label="Context"
+            value={liveStatus.contextMode || 'browser'}
+            valueClass="text-apple-green capitalize"
+          />
+          <div className="glass-divider" />
+          <StatusRow
+            label="Voice Agent"
+            value={
+              liveStatus.voiceEnabled
                 ? liveStatus.voiceListening
                   ? 'Listening'
-                  : 'Enabled (idle)'
-                : 'Disabled'}
-            </span>
-          </div>
+                  : 'Enabled'
+                : 'Disabled'
+            }
+            active={liveStatus.voiceEnabled && liveStatus.voiceListening}
+            dot={liveStatus.voiceEnabled}
+            dotColor={
+              liveStatus.voiceEnabled && liveStatus.voiceListening
+                ? 'bg-apple-green'
+                : 'bg-apple-orange'
+            }
+            valueClass={
+              liveStatus.voiceEnabled && liveStatus.voiceListening
+                ? 'text-apple-green'
+                : liveStatus.voiceEnabled
+                  ? 'text-apple-orange'
+                  : 'text-white/30'
+            }
+          />
           {liveStatus.voiceLastCommand && (
-            <div className="text-xs text-gray-400">
-              Last Voice Command: <span className="text-indigo-300">{liveStatus.voiceLastCommand}</span>
-            </div>
+            <>
+              <div className="glass-divider" />
+              <div className="py-2.5">
+                <span className="text-xs text-white/30">Last command: </span>
+                <span className="text-xs text-apple-blue">{liveStatus.voiceLastCommand}</span>
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Quick Stats</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-2xl font-bold text-indigo-400">{stats.clicksByHand || 0}</div>
-            <div className="text-sm text-gray-400">Hand Clicks</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-green-400">{formatTime(stats.timeActive || 0)}</div>
-            <div className="text-sm text-gray-400">Time Active</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-purple-400">{stats.pagesVisited || 0}</div>
-            <div className="text-sm text-gray-400">Pages Visited</div>
-          </div>
+      {/* Quick Stats */}
+      <div className="glass-panel p-5">
+        <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">Quick Stats</h2>
+        <div className="grid grid-cols-3 gap-3">
+          <StatItem value={stats.clicksByHand || 0} label="Clicks" color="text-apple-blue" />
+          <StatItem value={formatTime(stats.timeActive || 0)} label="Active" color="text-apple-green" />
+          <StatItem value={stats.pagesVisited || 0} label="Pages" color="text-apple-purple" />
         </div>
       </div>
 
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Master Controls</h2>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span>Hand Mode</span>
-            <button
-              onClick={() => updateSettings({ handEnabled: !settings.handEnabled })}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.handEnabled ? 'bg-indigo-600' : 'bg-gray-600'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  settings.handEnabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
+      {/* Master Controls */}
+      <div className="glass-panel p-5">
+        <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">Controls</h2>
+        <div className="space-y-0">
+          <ToggleRow
+            label="Hand Mode"
+            active={settings.handEnabled}
+            onChange={() => updateSettings({ handEnabled: !settings.handEnabled })}
+          />
+          <div className="glass-divider" />
+          <ToggleRow
+            label="Voice Agent"
+            active={settings.voiceEnabled}
+            onChange={() => updateSettings({ voiceEnabled: !settings.voiceEnabled })}
+          />
+        </div>
 
-          <div className="flex items-center justify-between">
-            <span>Voice Agent</span>
-            <button
-              onClick={() => updateSettings({ voiceEnabled: !settings.voiceEnabled })}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.voiceEnabled ? 'bg-indigo-600' : 'bg-gray-600'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  settings.voiceEnabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
-
+        <div className="mt-5 space-y-3">
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Wake Word</label>
+            <label className="block text-xs font-medium text-white/40 mb-1.5">Wake Word</label>
             <input
               type="text"
               value={voiceDraft.wakeWord}
@@ -183,13 +172,13 @@ export default function HomeTab({ settings, updateSettings }) {
                   wakeWord: voiceDraft.wakeWord.trim() || 'hey vox',
                 })
               }
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+              className="glass-input w-full px-3.5 py-2.5 text-sm"
               placeholder="hey vox"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">OpenAI API Key</label>
+            <label className="block text-xs font-medium text-white/40 mb-1.5">OpenAI API Key</label>
             <input
               type="password"
               value={voiceDraft.openaiKey}
@@ -201,15 +190,58 @@ export default function HomeTab({ settings, updateSettings }) {
                   openaiKey: voiceDraft.openaiKey.trim(),
                 })
               }
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+              className="glass-input w-full px-3.5 py-2.5 text-sm"
               placeholder="sk-..."
             />
-            <p className="text-xs text-gray-500 mt-2">
-              Whisper voice agent uses this key for transcription and intro summaries.
+            <p className="text-[11px] text-white/25 mt-1.5 leading-relaxed">
+              Used for Whisper transcription and page summaries.
             </p>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function StatusRow({ label, value, active, dot, dotColor, valueClass }) {
+  const defaultDotColor = active ? 'bg-apple-green' : 'bg-white/20';
+  const resolvedDotColor = dotColor || defaultDotColor;
+  const defaultValueClass = active ? 'text-apple-green' : 'text-white/40';
+  const resolvedValueClass = valueClass || defaultValueClass;
+
+  return (
+    <div className="flex items-center justify-between py-2.5">
+      <div className="flex items-center gap-2.5">
+        {dot && (
+          <div className={`w-2 h-2 rounded-full ${resolvedDotColor} ${active ? 'animate-status-pulse' : ''}`} />
+        )}
+        <span className="text-sm text-white/70">{label}</span>
+      </div>
+      <span className={`text-sm font-medium ${resolvedValueClass}`}>{value}</span>
+    </div>
+  );
+}
+
+function StatItem({ value, label, color }) {
+  return (
+    <div className="text-center">
+      <div className={`text-2xl font-semibold ${color} tabular-nums`}>{value}</div>
+      <div className="text-[11px] text-white/30 mt-1">{label}</div>
+    </div>
+  );
+}
+
+function ToggleRow({ label, active, onChange }) {
+  return (
+    <div className="flex items-center justify-between py-2.5">
+      <span className="text-sm text-white/70">{label}</span>
+      <button
+        onClick={onChange}
+        className="apple-toggle"
+        data-active={active ? 'true' : 'false'}
+      >
+        <span className="apple-toggle-knob" />
+      </button>
     </div>
   );
 }
