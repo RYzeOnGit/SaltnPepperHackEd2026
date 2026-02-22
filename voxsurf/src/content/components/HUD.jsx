@@ -6,8 +6,13 @@ const GESTURE_LABELS = {
   'scroll-up': 'Two-finger up',
   'scroll-down': 'Two-finger down',
   'shorts-prev': 'Shorts previous',
+  'yt-forward': 'YouTube +10s',
+  'yt-backward': 'YouTube -10s',
+  'yt-vol-up': 'YouTube volume up',
+  'yt-vol-down': 'YouTube volume down',
+  'yt-fullscreen': 'YouTube fullscreen',
   'dino-duck': 'Dino duck hold',
-  palm: 'Palm pause',
+  palm: 'Palm mute toggle',
   thumbsup: 'Thumbs up back',
   fist: 'Fist grab scroll',
   'three-finger': 'Three-finger swipe',
@@ -24,7 +29,7 @@ const MODE_LABELS = {
 
 const MODE_HINTS = {
   browser: 'Point + pinch click. Use fist and move hand up/down for smooth scroll. Tabs: Alt+Shift+L/H.',
-  youtube: 'Pinch play/pause, 2-finger left/right seek, up/down volume, palm mute.',
+  youtube: 'Pinch play/pause, 2-finger up +10s, thumb+pinky -10s, 3-finger up/down volume, rock sign fullscreen, palm mute.',
   'youtube-shorts': 'Point + pinch acts like mouse click. Two-finger up = next short, thumb+pinky out = previous short.',
   instagram: 'Point to controls, pinch to click play/mute. Use fist up/down to move reels.',
   dino: 'Pinch to jump, 2 fingers hold duck, hold-pinch on UI to click mode buttons.',

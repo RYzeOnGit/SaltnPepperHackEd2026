@@ -27,12 +27,18 @@
   - Dino: jump
 - `Fist`:
   - Browser: smooth scroll up/down by moving hand vertically
-- `Two-finger up/down`:
-  - YouTube: seek/volume control gesture
 - `Two-finger up`:
+  - YouTube: seek forward +10s
   - YouTube Shorts: next short (scroll down)
 - `Thumb + pinky out`:
+  - YouTube: seek backward -10s
   - YouTube Shorts: previous short
+- `Three-finger up`:
+  - YouTube: volume up
+- `Three-finger down`:
+  - YouTube: volume down
+- `Rock sign (index + pinky up)`:
+  - YouTube: toggle fullscreen
 - `Two fingers (index + middle)`:
   - Dino: hold duck
 - `Thumbs up`:
@@ -46,9 +52,11 @@
 2. Confirm HUD shows `Mode: YouTube`.
 3. Show controls in this order:
    - `Pinch` -> play/pause
-   - `Two-finger right` -> seek forward 10s
-   - `Two-finger left` -> seek backward 10s
-   - `Two-finger up/down` -> volume up/down
+   - `Two-finger up` -> seek forward 10s
+   - `Thumb + pinky out` -> seek backward 10s
+   - `Three-finger up` -> volume up
+   - `Three-finger down` -> volume down
+   - `Rock sign (index + pinky up)` -> fullscreen toggle
    - `Palm` -> mute/unmute
 4. Optional: point + pinch on a UI control (captions, settings) to show precision click still works.
 

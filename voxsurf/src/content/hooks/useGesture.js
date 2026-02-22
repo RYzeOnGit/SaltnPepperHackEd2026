@@ -68,7 +68,6 @@ export function useGesture(settings, handLandmarks) {
 
   const scrollVelocityRef = useRef(0);
 
-  const youtubeBaseRef = useRef(null);
   const lastYouTubeActionTimeRef = useRef(0);
   const lastDinoJumpTimeRef = useRef(0);
 
@@ -109,8 +108,7 @@ export function useGesture(settings, handLandmarks) {
   const REELS_FIST_STEP_THRESHOLD = 0.04;
   const FIST_SCROLL_DY_GAIN = 1.4;
 
-  const YT_SWIPE_THRESHOLD = 0.05;
-  const YT_ACTION_COOLDOWN = 300;
+  const YT_ACTION_COOLDOWN = 320;
   const DINO_JUMP_COOLDOWN = 260;
   const DINO_UI_PINCH_HOLD_MS = 320;
 
@@ -262,6 +260,15 @@ export function useGesture(settings, handLandmarks) {
     video.muted = !video.muted;
   }, []);
 
+  const toggleYouTubeFullscreen = useCallback(() => {
+    const button = document.querySelector('.ytp-fullscreen-button');
+    if (button) {
+      button.click();
+      return;
+    }
+    tapKey('f', 'KeyF', 70);
+  }, [tapKey]);
+
   const toggleShortsPlayPause = useCallback(() => {
     const video =
       document.querySelector('ytd-reel-video-renderer video') ||
@@ -348,6 +355,7 @@ export function useGesture(settings, handLandmarks) {
 
       const indexDown = isInverted(lm, 8, 6);
       const middleDown = isInverted(lm, 12, 10);
+      const ringDown = isInverted(lm, 16, 14);
 
       const extendedCount = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
 
@@ -356,12 +364,11 @@ export function useGesture(settings, handLandmarks) {
 
       if (pinchNow) return 'pinch';
       if (contextMode === 'dino' && indexUp && middleUp && !ringUp && !pinkyUp) return 'dino-duck';
-      if (contextMode === 'youtube' && !thumbUp && indexDown && middleDown && !ringUp && !pinkyUp) {
-        return 'scroll-down';
-      }
-      if (contextMode === 'youtube' && indexUp && middleUp && !ringUp && !pinkyUp) {
-        return 'scroll-up';
-      }
+      if (contextMode === 'youtube' && indexUp && middleUp && !ringUp && !pinkyUp) return 'yt-forward';
+      if (contextMode === 'youtube' && thumbUp && pinkyUp && !indexUp && !middleUp && !ringUp) return 'yt-backward';
+      if (contextMode === 'youtube' && !thumbUp && indexUp && middleUp && ringUp && !pinkyUp) return 'yt-vol-up';
+      if (contextMode === 'youtube' && !thumbUp && indexDown && middleDown && ringDown && !pinkyUp) return 'yt-vol-down';
+      if (contextMode === 'youtube' && indexUp && pinkyUp && !middleUp && !ringUp) return 'yt-fullscreen';
       if (contextMode === 'youtube-shorts' && thumbUp && pinkyUp && !indexUp && !middleUp && !ringUp) {
         return 'shorts-prev';
       }
@@ -403,7 +410,6 @@ export function useGesture(settings, handLandmarks) {
       confirmedGestureRef.current = 'none';
       setActiveGesture('none');
 
-      youtubeBaseRef.current = null;
       scrollVelocityRef.current = 0;
       fistBaseYRef.current = null;
       fistPrevYRef.current = null;
@@ -444,14 +450,6 @@ export function useGesture(settings, handLandmarks) {
       setActiveGesture(rawGesture);
       justConfirmed = true;
 
-      if (
-        rawGesture !== 'scroll-up' &&
-        rawGesture !== 'scroll-down' &&
-        rawGesture !== 'fist' &&
-        rawGesture !== 'dino-duck'
-      ) {
-        youtubeBaseRef.current = null;
-      }
       if (rawGesture !== 'point') {
         setIsDwelling(false);
         setDwellProgress(0);
@@ -561,36 +559,58 @@ export function useGesture(settings, handLandmarks) {
         break;
       }
 
-      case 'scroll-up':
-      case 'scroll-down': {
+      case 'yt-forward': {
+        const now = Date.now();
+        if (contextMode === 'youtube' && justConfirmed && now - lastYouTubeActionTimeRef.current > YT_ACTION_COOLDOWN) {
+          seekYouTube(10);
+          lastYouTubeActionTimeRef.current = now;
+        }
+        break;
+      }
+
+      case 'yt-backward': {
+        const now = Date.now();
+        if (contextMode === 'youtube' && justConfirmed && now - lastYouTubeActionTimeRef.current > YT_ACTION_COOLDOWN) {
+          seekYouTube(-10);
+          lastYouTubeActionTimeRef.current = now;
+        }
+        break;
+      }
+
+      case 'yt-vol-up': {
+        const now = Date.now();
+        if (contextMode === 'youtube' && justConfirmed && now - lastYouTubeActionTimeRef.current > YT_ACTION_COOLDOWN) {
+          adjustYouTubeVolume(0.08);
+          lastYouTubeActionTimeRef.current = now;
+        }
+        break;
+      }
+
+      case 'yt-vol-down': {
+        const now = Date.now();
+        if (contextMode === 'youtube' && justConfirmed && now - lastYouTubeActionTimeRef.current > YT_ACTION_COOLDOWN) {
+          adjustYouTubeVolume(-0.08);
+          lastYouTubeActionTimeRef.current = now;
+        }
+        break;
+      }
+
+      case 'yt-fullscreen': {
+        const now = Date.now();
+        if (contextMode === 'youtube' && justConfirmed && now - lastYouTubeActionTimeRef.current > YT_ACTION_COOLDOWN) {
+          toggleYouTubeFullscreen();
+          lastYouTubeActionTimeRef.current = now;
+        }
+        break;
+      }
+
+      case 'scroll-up': {
         if (contextMode === 'youtube-shorts') {
           const now = Date.now();
-          if (confirmedGesture === 'scroll-up' && now - lastReelStepTimeRef.current > FEED_STEP_COOLDOWN) {
+          if (now - lastReelStepTimeRef.current > FEED_STEP_COOLDOWN) {
             // Shorts request: two-finger up means move down to next short.
             stepYouTubeShort(1);
             lastReelStepTimeRef.current = now;
-          }
-        } else if (contextMode === 'youtube') {
-          const avgX = (lm[8].x + lm[12].x) / 2;
-          const avgY = (lm[8].y + lm[12].y) / 2;
-          if (youtubeBaseRef.current === null) {
-            youtubeBaseRef.current = { x: avgX, y: avgY };
-          } else {
-            const dx = avgX - youtubeBaseRef.current.x;
-            const dy = avgY - youtubeBaseRef.current.y;
-            const now = Date.now();
-
-            if (now - lastYouTubeActionTimeRef.current > YT_ACTION_COOLDOWN) {
-              if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) > YT_SWIPE_THRESHOLD) {
-                seekYouTube(dx > 0 ? -10 : 10);
-                lastYouTubeActionTimeRef.current = now;
-              } else if (Math.abs(dy) > YT_SWIPE_THRESHOLD) {
-                adjustYouTubeVolume(dy > 0 ? -0.08 : 0.08);
-                lastYouTubeActionTimeRef.current = now;
-              }
-            }
-
-            youtubeBaseRef.current = { x: avgX, y: avgY };
           }
         }
         break;
@@ -749,6 +769,7 @@ export function useGesture(settings, handLandmarks) {
     seekYouTube,
     adjustYouTubeVolume,
     toggleYouTubeMute,
+    toggleYouTubeFullscreen,
     toggleShortsPlayPause,
     handleClick,
     tapKey,

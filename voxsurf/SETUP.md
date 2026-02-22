@@ -55,8 +55,11 @@ Then load the extension from the `dist` folder (it will auto-reload on changes).
 
 3. **YouTube Controls**
    - Pinch to toggle play/pause
-   - Two-finger left/right to seek ±10s
-   - Two-finger up/down for volume
+   - Two fingers up (index + middle) to seek forward +10s
+   - Thumb + pinky out (shaka) to seek backward -10s
+   - Three fingers up (index + middle + ring) for volume up
+   - Three fingers down (inverted) for volume down
+   - Rock sign (index + pinky up) to toggle fullscreen
    - Palm to mute/unmute
 
 4. **Dino Controls**
