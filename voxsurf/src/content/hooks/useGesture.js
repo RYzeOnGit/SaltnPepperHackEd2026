@@ -25,6 +25,8 @@ function isUiLikeElement(element) {
 
 const CLICKABLE_SELECTOR =
   'button,[role="button"],a,input,select,textarea,label,[onclick],[data-action],[aria-label]';
+const STRICT_CLICKABLE_SELECTOR =
+  'button,[role="button"],a,input,select,textarea,label,[onclick],[data-action]';
 const SHORTS_UI_CONTROL_PATTERN =
   /like|dislike|comment|comments|share|subscribe|subscribed|mute|unmute|volume|more|menu|report/i;
 
@@ -63,6 +65,7 @@ export function useGesture(settings, handLandmarks) {
   const lastCursorRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const pinchActiveRef = useRef(false);
   const lastPinchTimeRef = useRef(0);
+  const lastPointTimeRef = useRef(0);
 
   const dwellStartRef = useRef(null);
 
@@ -89,6 +92,7 @@ export function useGesture(settings, handLandmarks) {
   const PINCH_THRESHOLD = 0.055;
   const PINCH_RELEASE = 0.09;
   const PINCH_COOLDOWN = 280;
+  const POINT_PRIME_WINDOW_MS = 1400;
 
   const DWELL_TIME = 900;
   const DWELL_MOVE_THRESH = 15;
@@ -108,7 +112,7 @@ export function useGesture(settings, handLandmarks) {
   const REELS_FIST_STEP_THRESHOLD = 0.04;
   const FIST_SCROLL_DY_GAIN = 1.4;
 
-  const YT_ACTION_COOLDOWN = 320;
+  const YT_ACTION_COOLDOWN = 480;
   const DINO_JUMP_COOLDOWN = 260;
   const DINO_UI_PINCH_HOLD_MS = 320;
 
@@ -159,6 +163,46 @@ export function useGesture(settings, handLandmarks) {
       y: normY * window.innerHeight,
     };
   }, []);
+
+  const syncCursorPosition = useCallback((x, y) => {
+    lastCursorRef.current = { x, y };
+    setCursorX(x);
+    setCursorY(y);
+  }, []);
+
+  const mapIndexToCursor = useCallback(
+    (lm, smoothing = 1) => {
+      const indexTip = lm[8];
+      const { x: rawTargetX, y: rawTargetY } = mapToScreen(indexTip.x, indexTip.y);
+
+      const sensitivity = settings.sensitivity || 1;
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+
+      const targetX = clamp(
+        centerX + (rawTargetX - centerX) * sensitivity,
+        0,
+        window.innerWidth
+      );
+      const targetY = clamp(
+        centerY + (rawTargetY - centerY) * sensitivity,
+        0,
+        window.innerHeight
+      );
+
+      if (smoothing >= 1) {
+        return { x: targetX, y: targetY };
+      }
+
+      const nextX = lastCursorRef.current.x + (targetX - lastCursorRef.current.x) * smoothing;
+      const nextY = lastCursorRef.current.y + (targetY - lastCursorRef.current.y) * smoothing;
+      return {
+        x: clamp(nextX, 0, window.innerWidth),
+        y: clamp(nextY, 0, window.innerHeight),
+      };
+    },
+    [mapToScreen, settings.sensitivity]
+  );
 
   const isExtended = useCallback((lm, tipIdx, pipIdx) => {
     return lm[tipIdx].y < lm[pipIdx].y - EXTENSION_MARGIN;
@@ -227,16 +271,22 @@ export function useGesture(settings, handLandmarks) {
 
   const toggleYouTubePlayPause = useCallback(() => {
     const video = document.querySelector('video');
+    const button = document.querySelector('.ytp-play-button');
+
+    if (button) {
+      button.click();
+      return;
+    }
     if (!video) return;
 
     if (video.paused) {
       video.play().catch(() => {
-        document.querySelector('.ytp-play-button')?.click();
+        tapKey('k', 'KeyK', 75);
       });
     } else {
       video.pause();
     }
-  }, []);
+  }, [tapKey]);
 
   const adjustYouTubeVolume = useCallback((delta) => {
     const video = document.querySelector('video');
@@ -345,6 +395,35 @@ export function useGesture(settings, handLandmarks) {
     return true;
   }, []);
 
+  const tryUniversalPointPinchClick = useCallback(
+    (lm, mode) => {
+      const { x: clickX, y: clickY } = mapIndexToCursor(lm, 1);
+      syncCursorPosition(clickX, clickY);
+
+      const element = document.elementFromPoint(clickX, clickY);
+      const strictTarget = element?.closest(STRICT_CLICKABLE_SELECTOR);
+
+      if (mode === 'youtube' && !strictTarget) {
+        return false;
+      }
+
+      if (mode === 'youtube-shorts') {
+        if (!strictTarget) return false;
+        const ariaLabel = (
+          strictTarget.getAttribute('aria-label') ||
+          strictTarget.getAttribute('title') ||
+          ''
+        ).trim();
+        if (!SHORTS_UI_CONTROL_PATTERN.test(ariaLabel)) {
+          return false;
+        }
+      }
+
+      return handleClick(clickX, clickY);
+    },
+    [handleClick, mapIndexToCursor, syncCursorPosition]
+  );
+
   const classifyGesture = useCallback(
     (lm) => {
       const thumbUp = isThumbExtended(lm);
@@ -416,6 +495,7 @@ export function useGesture(settings, handLandmarks) {
 
       pinchActiveRef.current = false;
       setIsPinching(false);
+      lastPointTimeRef.current = 0;
 
       setIsDwelling(false);
       setDwellProgress(0);
@@ -439,7 +519,12 @@ export function useGesture(settings, handLandmarks) {
       rawStreakRef.current = 1;
     }
 
-    const requiredFrames = rawGesture === 'thumbsup' ? CONFIRM_DESTRUCTIVE : CONFIRM_FRAMES;
+    const highConfidenceGesture =
+      rawGesture === 'thumbsup' ||
+      rawGesture === 'yt-vol-up' ||
+      rawGesture === 'yt-vol-down' ||
+      rawGesture === 'palm';
+    const requiredFrames = highConfidenceGesture ? CONFIRM_DESTRUCTIVE : CONFIRM_FRAMES;
 
     let confirmedGesture = confirmedGestureRef.current;
     let justConfirmed = false;
@@ -479,6 +564,7 @@ export function useGesture(settings, handLandmarks) {
             pinchActiveRef.current = true;
             lastPinchTimeRef.current = now;
             setIsPinching(true);
+            const pointPrimed = now - lastPointTimeRef.current <= POINT_PRIME_WINDOW_MS;
 
             if (contextMode === 'dino') {
               const target = document.elementFromPoint(
@@ -493,44 +579,17 @@ export function useGesture(settings, handLandmarks) {
                 tapKey(' ', 'Space', 32);
                 lastDinoJumpTimeRef.current = now;
               }
-            } else if (contextMode === 'youtube') {
+              break;
+            }
+
+            if (pointPrimed && tryUniversalPointPinchClick(lm, contextMode)) {
+              break;
+            }
+
+            if (contextMode === 'youtube') {
               toggleYouTubePlayPause();
             } else if (contextMode === 'youtube-shorts') {
-              const indexTip = lm[8];
-              const { x: rawTargetX, y: rawTargetY } = mapToScreen(indexTip.x, indexTip.y);
-              const sensitivity = settings.sensitivity || 1;
-              const centerX = window.innerWidth / 2;
-              const centerY = window.innerHeight / 2;
-              const clickX = clamp(
-                centerX + (rawTargetX - centerX) * sensitivity,
-                0,
-                window.innerWidth
-              );
-              const clickY = clamp(
-                centerY + (rawTargetY - centerY) * sensitivity,
-                0,
-                window.innerHeight
-              );
-
-              lastCursorRef.current = { x: clickX, y: clickY };
-              setCursorX(clickX);
-              setCursorY(clickY);
-
-              const element = document.elementFromPoint(clickX, clickY);
-              const interactiveTarget = element?.closest(CLICKABLE_SELECTOR);
-
-              const ariaLabel = (
-                interactiveTarget?.getAttribute('aria-label') ||
-                interactiveTarget?.getAttribute('title') ||
-                ''
-              ).trim();
-
-              if (interactiveTarget && SHORTS_UI_CONTROL_PATTERN.test(ariaLabel)) {
-                handleClick(clickX, clickY);
-              } else {
-                // Non-control areas should always behave as play/pause.
-                toggleShortsPlayPause();
-              }
+              toggleShortsPlayPause();
             } else {
               handleClick();
             }
@@ -665,21 +724,7 @@ export function useGesture(settings, handLandmarks) {
       }
 
       case 'point': {
-        const indexTip = lm[8];
-        const { x: rawTargetX, y: rawTargetY } = mapToScreen(indexTip.x, indexTip.y);
-
-        const sensitivity = settings.sensitivity || 1;
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        const targetX = centerX + (rawTargetX - centerX) * sensitivity;
-        const targetY = centerY + (rawTargetY - centerY) * sensitivity;
-
-        const lerp = 0.4;
-        const newX = lastCursorRef.current.x + (targetX - lastCursorRef.current.x) * lerp;
-        const newY = lastCursorRef.current.y + (targetY - lastCursorRef.current.y) * lerp;
-
-        const clampedX = clamp(newX, 0, window.innerWidth);
-        const clampedY = clamp(newY, 0, window.innerHeight);
+        const { x: clampedX, y: clampedY } = mapIndexToCursor(lm, 0.4);
 
         if (contextMode === 'browser') {
           const moved = Math.hypot(
@@ -709,9 +754,8 @@ export function useGesture(settings, handLandmarks) {
           }
         }
 
-        lastCursorRef.current = { x: clampedX, y: clampedY };
-        setCursorX(clampedX);
-        setCursorY(clampedY);
+        syncCursorPosition(clampedX, clampedY);
+        lastPointTimeRef.current = Date.now();
         break;
       }
 
@@ -760,7 +804,8 @@ export function useGesture(settings, handLandmarks) {
     settings.sensitivity,
     contextMode,
     classifyGesture,
-    mapToScreen,
+    mapIndexToCursor,
+    syncCursorPosition,
     applyBrowserSmoothScroll,
     decayBrowserScroll,
     stepVerticalFeed,
@@ -772,6 +817,7 @@ export function useGesture(settings, handLandmarks) {
     toggleYouTubeFullscreen,
     toggleShortsPlayPause,
     handleClick,
+    tryUniversalPointPinchClick,
     tapKey,
     setDinoDuck,
   ]);

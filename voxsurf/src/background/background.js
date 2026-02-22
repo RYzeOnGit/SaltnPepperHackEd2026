@@ -21,10 +21,12 @@ async function transcribeAudioInBackground({ openaiKey, audioBase64, audioType }
   formData.append('file', file);
   formData.append('model', 'whisper-1');
   formData.append('language', 'en');
+  formData.append('temperature', '0');
   formData.append(
     'prompt',
-    'Wake word is "hey vox". Transcribe short browser voice commands exactly. ' +
-      'Common commands: "hey vox search mrbeast on youtube", "search ... on youtube", ' +
+    'Wake word is "hey vox" (misheard as hey box/fox/voks sometimes). Transcribe browser voice commands exactly. ' +
+      'Common commands: "hey vox search mrbeast on youtube", "and you search ... for me on youtube", ' +
+      '"hey vox play ... on youtube", "search ... on youtube", ' +
       '"summarize this section", "summarize comments section", "summarize this page".'
   );
 

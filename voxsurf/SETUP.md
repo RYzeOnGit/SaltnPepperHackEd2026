@@ -85,10 +85,12 @@ Then load the extension from the `dist` folder (it will auto-reload on changes).
    - `Alt+Shift+H` for previous tab
 
 7. **Whisper Voice Agent**
+   - Use the **Voice** toggle in the popup header for quick on/off
    - Say `hey vox search mrbeast on youtube`
    - Say `hey vox summarize this section`
    - Or `hey vox summarize comments section`
-   - If wake word is spoken alone, say the command within ~9 seconds
+   - If wake word is spoken alone, say the command within ~12 seconds
+   - Speech is processed after roughly a 1-second silence gap
 
 ## Troubleshooting
 

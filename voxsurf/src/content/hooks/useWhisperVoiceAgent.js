@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { arrayBufferToBase64 } from '../../shared/audioTransport.js';
 
-const CHUNK_MS = 1800;
-const MIN_BLOB_BYTES = 2500;
-const FOLLOW_UP_WINDOW_MS = 9000;
+const SILENCE_GAP_MS = 1000;
+const MIN_SPEECH_MS = 220;
+const MAX_UTTERANCE_MS = 12000;
+const VAD_POLL_MS = 70;
+const VAD_MIN_THRESHOLD = 0.012;
+const VAD_NOISE_MULTIPLIER = 2.2;
+const MIN_BLOB_BYTES = 700;
+const FOLLOW_UP_WINDOW_MS = 12000;
+const TRANSCRIPT_WINDOW_MS = 7000;
 const SUMMARIZE_COMMAND_REGEX = /\bsummari[sz]e\b/i;
 const SECTION_MIN_CHARS = 120;
 const SECTION_MAX_CHARS = 2600;
@@ -214,26 +220,61 @@ function extractSectionTextFromPage(sectionRequest) {
   return { text: fallback.slice(0, SECTION_MAX_CHARS), resolvedLabel: 'this page' };
 }
 
-function matchYouTubeSearchCommand(commandText) {
+function buildYouTubeSearchUrl(query, intent = 'search') {
+  const params = new URLSearchParams({
+    search_query: query,
+  });
+  if (intent === 'play') {
+    params.set('voxsurf_action', 'play');
+    params.set('voxsurf_nonce', String(Date.now()));
+  }
+  return `https://www.youtube.com/results?${params.toString()}`;
+}
+
+function matchYouTubeSearchCommand(commandText, options = {}) {
   const command = collapseWhitespace(commandText);
-  const patterns = [
-    /^(?:please\s+)?(?:search|find)\s+(.+?)\s+(?:on|in)\s+youtube(?:\s+please)?[.!?]*$/i,
-    /^youtube\s+search\s+(.+?)(?:\s+please)?[.!?]*$/i,
-    /^(?:please\s+)?play\s+(.+?)\s+on\s+youtube(?:\s+please)?[.!?]*$/i,
+  const { allowImplicitYoutube = false } = options;
+  const cleanQuery = (rawQuery) => {
+    let query = collapseWhitespace(rawQuery || '');
+    query = query.replace(/\b(?:on|in|from)\s+youtube\b.*$/i, '');
+    query = query.replace(/\s+(?:for\s+me|please|thanks|thank\s+you)[.!?]*$/i, '');
+    query = query.replace(/^[`"'“”]+|[`"'“”]+$/g, '').trim();
+    return query;
+  };
+
+  const explicitPatterns = [
+    { intent: 'search', regex: /(?:^|\b)(?:search|find|look\s*up)\s+(.+?)\s+(?:on|in)\s+youtube\b/i },
+    { intent: 'search', regex: /(?:^|\b)(?:search|find|look\s*up)\s+youtube\s+(?:for\s+)?(.+)$/i },
+    { intent: 'search', regex: /(?:^|\b)youtube\s+search\s+(.+)$/i },
+    { intent: 'play', regex: /(?:^|\b)play\s+(.+?)\s+(?:on|in|from)\s+youtube\b/i },
+    { intent: 'play', regex: /(?:^|\b)youtube\s+play\s+(.+)$/i },
   ];
 
-  for (const pattern of patterns) {
-    const match = command.match(pattern);
+  for (const pattern of explicitPatterns) {
+    const match = command.match(pattern.regex);
     if (!match) continue;
-    const query = collapseWhitespace(match[1]);
-    if (query) return query;
+    const query = cleanQuery(match[1]);
+    if (query) return { intent: pattern.intent, query };
   }
 
-  return '';
+  if (allowImplicitYoutube) {
+    const implicitPatterns = [
+      { intent: 'search', regex: /(?:^|\b)(?:search|find|look\s*up)\s+(.+)$/i },
+      { intent: 'play', regex: /(?:^|\b)play\s+(.+)$/i },
+    ];
+    for (const pattern of implicitPatterns) {
+      const match = command.match(pattern.regex);
+      if (!match) continue;
+      const query = cleanQuery(match[1]);
+      if (query) return { intent: pattern.intent, query };
+    }
+  }
+
+  return null;
 }
 
 function isDirectCommandTranscript(transcript) {
-  return Boolean(matchYouTubeSearchCommand(transcript) || parseSummarizeCommand(transcript));
+  return Boolean(matchYouTubeSearchCommand(transcript, { allowImplicitYoutube: false }) || parseSummarizeCommand(transcript));
 }
 
 function extractWakeCommand(transcript, wakeWord) {
@@ -242,14 +283,15 @@ function extractWakeCommand(transcript, wakeWord) {
 
   if (!normalizedWake) return { heardWake: true, commandText: transcript };
 
-  let index = normalizedTranscript.indexOf(normalizedWake);
+  let index = normalizedTranscript.lastIndexOf(normalizedWake);
   let matchedLength = normalizedWake.length;
 
   // Whisper often mishears "vox" as "box" or "fox". Accept those for default wake word.
   if (index === -1 && normalizedWake === 'hey vox') {
-    const aliasRegex = /\bhey\s+(vox|box|fox|voks|vax)\b/i;
-    const match = normalizedTranscript.match(aliasRegex);
-    if (match?.index !== undefined) {
+    const aliasRegex = /\b(?:hey|hi)\s+(vox|box|fox|voks|vax|walks|voxx|books)\b/gi;
+    const matches = Array.from(normalizedTranscript.matchAll(aliasRegex));
+    const match = matches.length ? matches[matches.length - 1] : null;
+    if (match?.index != null) {
       index = match.index;
       matchedLength = match[0].length;
     }
@@ -265,6 +307,47 @@ function extractWakeCommand(transcript, wakeWord) {
     .trim();
 
   return { heardWake: true, commandText: afterWake };
+}
+
+function combineRecentTranscript(newTranscript, recentTranscriptRef) {
+  const now = Date.now();
+  recentTranscriptRef.current.push({ text: collapseWhitespace(newTranscript), timestamp: now });
+  recentTranscriptRef.current = recentTranscriptRef.current.filter(
+    (entry) => now - entry.timestamp <= TRANSCRIPT_WINDOW_MS
+  );
+  return collapseWhitespace(recentTranscriptRef.current.map((entry) => entry.text).join(' '));
+}
+
+function computeRmsFromAnalyser(analyser, buffer) {
+  if (!analyser || !buffer) return 0;
+  analyser.getByteTimeDomainData(buffer);
+  let sumSquares = 0;
+  for (let i = 0; i < buffer.length; i += 1) {
+    const centered = (buffer[i] - 128) / 128;
+    sumSquares += centered * centered;
+  }
+  return Math.sqrt(sumSquares / buffer.length);
+}
+
+function findFirstYouTubeResultUrl() {
+  const selectors = [
+    'ytd-video-renderer a#video-title',
+    'ytd-video-renderer a#thumbnail',
+    'a#video-title',
+  ];
+  for (const selector of selectors) {
+    const links = Array.from(document.querySelectorAll(selector));
+    for (const link of links) {
+      const href = link.getAttribute('href') || '';
+      if (!href.includes('/watch')) continue;
+      try {
+        return new URL(href, window.location.origin).toString();
+      } catch (_error) {
+        // ignore bad urls
+      }
+    }
+  }
+  return '';
 }
 
 function sendRuntimeMessage(message) {
@@ -291,8 +374,19 @@ export function useWhisperVoiceAgent(settings) {
   const streamRef = useRef(null);
   const recorderMimeTypeRef = useRef('audio/webm');
   const shouldListenRef = useRef(false);
-  const cycleStopTimerRef = useRef(null);
+  const utteranceStopTimerRef = useRef(null);
   const chunkBufferRef = useRef([]);
+  const pendingBlobsRef = useRef([]);
+  const recentTranscriptRef = useRef([]);
+  const audioContextRef = useRef(null);
+  const mediaSourceRef = useRef(null);
+  const analyserRef = useRef(null);
+  const vadBufferRef = useRef(null);
+  const vadIntervalRef = useRef(null);
+  const speechActiveRef = useRef(false);
+  const speechStartRef = useRef(0);
+  const silenceStartRef = useRef(0);
+  const noiseFloorRef = useRef(0.008);
   const busyRef = useRef(false);
   const startingRef = useRef(false);
   const awaitingCommandUntilRef = useRef(0);
@@ -301,6 +395,37 @@ export function useWhisperVoiceAgent(settings) {
   useEffect(() => {
     wakeWordRef.current = collapseWhitespace(settings.wakeWord || 'hey vox').toLowerCase();
   }, [settings.wakeWord]);
+
+  useEffect(() => {
+    if (!/youtube\.com$/i.test(window.location.hostname)) return;
+    if (window.location.pathname !== '/results') return;
+
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('voxsurf_action') !== 'play') return;
+
+    const query = url.searchParams.get('search_query') || '';
+    const nonce = url.searchParams.get('voxsurf_nonce') || query;
+    const attemptKey = `voxsurf_play_${nonce}`;
+    if (sessionStorage.getItem(attemptKey)) return;
+
+    let attempts = 0;
+    const timerId = window.setInterval(() => {
+      attempts += 1;
+      const firstVideoUrl = findFirstYouTubeResultUrl();
+      if (firstVideoUrl) {
+        sessionStorage.setItem(attemptKey, '1');
+        window.location.href = firstVideoUrl;
+        window.clearInterval(timerId);
+        return;
+      }
+
+      if (attempts >= 30) {
+        window.clearInterval(timerId);
+      }
+    }, 250);
+
+    return () => window.clearInterval(timerId);
+  }, []);
 
   const speak = useCallback((text) => {
     const utteranceText = collapseWhitespace(text);
@@ -377,18 +502,25 @@ export function useWhisperVoiceAgent(settings) {
   );
 
   const executeCommand = useCallback(
-    async (rawCommand) => {
+    async (rawCommand, options = {}) => {
       const command = collapseWhitespace(rawCommand);
       if (!command) return;
+      const { allowImplicitYoutube = false } = options;
 
       setLastCommand(command);
       setError('');
 
-      const query = matchYouTubeSearchCommand(command);
-      if (query) {
+      const youtubeCommand = matchYouTubeSearchCommand(command, { allowImplicitYoutube });
+      if (youtubeCommand) {
+        const { intent, query } = youtubeCommand;
         bumpCommandStat();
-        speak(`Searching YouTube for ${query}`);
-        window.location.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+        if (intent === 'play') {
+          speak(`Playing ${query} on YouTube.`);
+          window.location.href = buildYouTubeSearchUrl(query, 'play');
+          return;
+        }
+        speak(`Searching YouTube for ${query}.`);
+        window.location.href = buildYouTubeSearchUrl(query, 'search');
         return;
       }
 
@@ -401,7 +533,7 @@ export function useWhisperVoiceAgent(settings) {
         return;
       }
 
-      speak('I heard you, but I only support YouTube search and section summary right now.');
+      return;
     },
     [bumpCommandStat, speak, summarizeSection]
   );
@@ -409,24 +541,30 @@ export function useWhisperVoiceAgent(settings) {
   const processTranscript = useCallback(
     async (transcript) => {
       if (!transcript) return;
+      const combinedTranscript = combineRecentTranscript(transcript, recentTranscriptRef);
 
       const now = Date.now();
-      const { heardWake, commandText } = extractWakeCommand(transcript, wakeWordRef.current);
+      const currentWakeParse = extractWakeCommand(transcript, wakeWordRef.current);
+      const combinedWakeParse = extractWakeCommand(combinedTranscript, wakeWordRef.current);
+      const wakeParse = currentWakeParse.heardWake ? currentWakeParse : combinedWakeParse;
+      const { heardWake, commandText } = wakeParse;
       const inFollowUpWindow = now < awaitingCommandUntilRef.current;
-      const directCommand = isDirectCommandTranscript(transcript);
+      const directCommand =
+        isDirectCommandTranscript(transcript) || isDirectCommandTranscript(combinedTranscript);
 
       // Ignore ambient speech that isn't wake-word or a clear command.
       if (!heardWake && !inFollowUpWindow && !directCommand) {
         return;
       }
 
-      setLastHeard(transcript);
+      setLastHeard(heardWake ? combinedTranscript : transcript);
 
       if (heardWake) {
         awaitingCommandUntilRef.current = now + FOLLOW_UP_WINDOW_MS;
         if (commandText) {
-          await executeCommand(commandText);
+          await executeCommand(commandText, { allowImplicitYoutube: true });
           awaitingCommandUntilRef.current = 0;
+          recentTranscriptRef.current = [];
         } else {
           speak('Hi, how may I help you?');
         }
@@ -434,8 +572,9 @@ export function useWhisperVoiceAgent(settings) {
       }
 
       if (directCommand || inFollowUpWindow) {
-        await executeCommand(transcript);
+        await executeCommand(transcript, { allowImplicitYoutube: inFollowUpWindow });
         awaitingCommandUntilRef.current = 0;
+        recentTranscriptRef.current = [];
       }
     },
     [executeCommand, speak]
@@ -445,17 +584,23 @@ export function useWhisperVoiceAgent(settings) {
     async (blob) => {
       if (!settings.voiceEnabled || !settings.openaiKey) return;
       if (!blob || blob.size < MIN_BLOB_BYTES) return;
-      if (busyRef.current) return;
       if (document.visibilityState !== 'visible') return;
+
+      pendingBlobsRef.current.push(blob);
+      if (busyRef.current) return;
 
       busyRef.current = true;
       setIsProcessing(true);
 
       try {
-        const transcript = await transcribeChunk(blob);
-        setError('');
-        if (transcript) {
-          await processTranscript(transcript);
+        while (pendingBlobsRef.current.length > 0) {
+          const nextBlob = pendingBlobsRef.current.shift();
+          if (!nextBlob) continue;
+          const transcript = await transcribeChunk(nextBlob);
+          setError('');
+          if (transcript) {
+            await processTranscript(transcript);
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Voice agent error';
@@ -472,9 +617,19 @@ export function useWhisperVoiceAgent(settings) {
   const stopListening = useCallback(() => {
     shouldListenRef.current = false;
     chunkBufferRef.current = [];
-    if (cycleStopTimerRef.current) {
-      window.clearTimeout(cycleStopTimerRef.current);
-      cycleStopTimerRef.current = null;
+    pendingBlobsRef.current = [];
+    recentTranscriptRef.current = [];
+    speechActiveRef.current = false;
+    speechStartRef.current = 0;
+    silenceStartRef.current = 0;
+
+    if (vadIntervalRef.current) {
+      window.clearInterval(vadIntervalRef.current);
+      vadIntervalRef.current = null;
+    }
+    if (utteranceStopTimerRef.current) {
+      window.clearTimeout(utteranceStopTimerRef.current);
+      utteranceStopTimerRef.current = null;
     }
 
     const recorder = recorderRef.current;
@@ -485,6 +640,23 @@ export function useWhisperVoiceAgent(settings) {
       } catch (error) {
         // Ignore stop errors.
       }
+    }
+
+    if (mediaSourceRef.current) {
+      try {
+        mediaSourceRef.current.disconnect();
+      } catch (_error) {
+        // ignore disconnect failures
+      }
+      mediaSourceRef.current = null;
+    }
+    analyserRef.current = null;
+    vadBufferRef.current = null;
+
+    const audioContext = audioContextRef.current;
+    audioContextRef.current = null;
+    if (audioContext) {
+      audioContext.close().catch(() => {});
     }
 
     const stream = streamRef.current;
@@ -531,32 +703,57 @@ export function useWhisperVoiceAgent(settings) {
 
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       recorderMimeTypeRef.current = recorder.mimeType || mimeType || 'audio/webm';
+      const AudioContextImpl = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextImpl) {
+        throw new Error('Web Audio API is not supported in this browser');
+      }
+      const audioContext = new AudioContextImpl();
+      await audioContext.resume().catch(() => {});
+      audioContextRef.current = audioContext;
+      const sourceNode = audioContext.createMediaStreamSource(stream);
+      mediaSourceRef.current = sourceNode;
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.85;
+      sourceNode.connect(analyser);
+      analyserRef.current = analyser;
+      vadBufferRef.current = new Uint8Array(analyser.fftSize);
+      noiseFloorRef.current = 0.008;
 
-      const beginCaptureCycle = () => {
-        const activeRecorder = recorderRef.current;
-        if (!activeRecorder || activeRecorder !== recorder || !shouldListenRef.current) return;
-        if (activeRecorder.state !== 'inactive') return;
+      const stopUtteranceRecording = () => {
+        if (!recorderRef.current || recorderRef.current !== recorder) return;
+        if (utteranceStopTimerRef.current) {
+          window.clearTimeout(utteranceStopTimerRef.current);
+          utteranceStopTimerRef.current = null;
+        }
+        if (recorder.state === 'recording') {
+          try {
+            recorder.stop();
+          } catch (_error) {
+            // ignore stop errors
+          }
+        }
+      };
 
+      const startUtteranceRecording = () => {
+        if (!recorderRef.current || recorderRef.current !== recorder || !shouldListenRef.current) return;
+        if (recorder.state !== 'inactive') return;
         chunkBufferRef.current = [];
         try {
-          activeRecorder.start();
+          recorder.start();
         } catch (error) {
           setError(error instanceof Error ? error.message : 'Failed to start microphone recording');
           return;
         }
 
-        setIsListening(true);
-        cycleStopTimerRef.current = window.setTimeout(() => {
-          const currentRecorder = recorderRef.current;
-          if (!currentRecorder || currentRecorder !== recorder) return;
-          if (currentRecorder.state === 'recording') {
-            try {
-              currentRecorder.stop();
-            } catch (error) {
-              // Ignore stop errors.
-            }
-          }
-        }, CHUNK_MS);
+        if (utteranceStopTimerRef.current) {
+          window.clearTimeout(utteranceStopTimerRef.current);
+        }
+        utteranceStopTimerRef.current = window.setTimeout(() => {
+          speechActiveRef.current = false;
+          silenceStartRef.current = 0;
+          stopUtteranceRecording();
+        }, MAX_UTTERANCE_MS);
       };
 
       recorder.ondataavailable = (event) => {
@@ -568,9 +765,9 @@ export function useWhisperVoiceAgent(settings) {
         setError(event.error?.message || 'Microphone recording error');
       };
       recorder.onstop = async () => {
-        if (cycleStopTimerRef.current) {
-          window.clearTimeout(cycleStopTimerRef.current);
-          cycleStopTimerRef.current = null;
+        if (utteranceStopTimerRef.current) {
+          window.clearTimeout(utteranceStopTimerRef.current);
+          utteranceStopTimerRef.current = null;
         }
 
         const chunks = chunkBufferRef.current;
@@ -581,16 +778,54 @@ export function useWhisperVoiceAgent(settings) {
           await onChunk(cycleBlob);
         }
 
-        if (shouldListenRef.current && recorderRef.current === recorder && streamRef.current) {
-          beginCaptureCycle();
-          return;
-        }
-
-        setIsListening(false);
+        speechActiveRef.current = false;
+        silenceStartRef.current = 0;
+        speechStartRef.current = 0;
       };
 
       recorderRef.current = recorder;
-      beginCaptureCycle();
+      setIsListening(true);
+
+      vadIntervalRef.current = window.setInterval(() => {
+        const activeRecorder = recorderRef.current;
+        const activeAnalyser = analyserRef.current;
+        const activeBuffer = vadBufferRef.current;
+        if (!activeRecorder || activeRecorder !== recorder || !activeAnalyser || !activeBuffer) return;
+        if (!shouldListenRef.current) return;
+
+        const rms = computeRmsFromAnalyser(activeAnalyser, activeBuffer);
+        const noiseFloor = noiseFloorRef.current;
+        const speechThreshold = Math.max(VAD_MIN_THRESHOLD, noiseFloor * VAD_NOISE_MULTIPLIER);
+        const now = Date.now();
+
+        if (rms > speechThreshold) {
+          silenceStartRef.current = 0;
+          if (!speechActiveRef.current) {
+            speechActiveRef.current = true;
+            speechStartRef.current = now;
+            startUtteranceRecording();
+          }
+          return;
+        }
+
+        if (!speechActiveRef.current) {
+          noiseFloorRef.current = noiseFloor * 0.96 + rms * 0.04;
+          return;
+        }
+
+        if (!silenceStartRef.current) {
+          silenceStartRef.current = now;
+        }
+
+        if (
+          now - silenceStartRef.current >= SILENCE_GAP_MS &&
+          now - speechStartRef.current >= MIN_SPEECH_MS
+        ) {
+          speechActiveRef.current = false;
+          silenceStartRef.current = 0;
+          stopUtteranceRecording();
+        }
+      }, VAD_POLL_MS);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to access microphone';
       setError(message);

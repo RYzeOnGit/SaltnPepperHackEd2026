@@ -29,7 +29,7 @@ const MODE_LABELS = {
 
 const MODE_HINTS = {
   browser: 'Point + pinch click. Use fist and move hand up/down for smooth scroll. Tabs: Alt+Shift+L/H.',
-  youtube: 'Pinch play/pause, 2-finger up +10s, thumb+pinky -10s, 3-finger up/down volume, rock sign fullscreen, palm mute.',
+  youtube: 'Point then pinch to click any UI (results, videos, buttons). Pinch empty area play/pause, 2-finger up +10s, thumb+pinky -10s, 3-finger up/down volume, rock sign fullscreen, palm mute.',
   'youtube-shorts': 'Point + pinch acts like mouse click. Two-finger up = next short, thumb+pinky out = previous short.',
   instagram: 'Point to controls, pinch to click play/mute. Use fist up/down to move reels.',
   dino: 'Pinch to jump, 2 fingers hold duck, hold-pinch on UI to click mode buttons.',

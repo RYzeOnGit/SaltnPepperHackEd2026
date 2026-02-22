@@ -71,8 +71,29 @@ export default function Popup() {
     <div className="w-full h-full bg-gray-900 text-white">
       <div className="flex flex-col h-full">
         <header className="bg-indigo-600 p-4 text-center">
-          <h1 className="text-2xl font-bold">🖐️ VoxSurf</h1>
-          <p className="text-sm text-indigo-200">Hand + voice control mode</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-left">
+              <h1 className="text-2xl font-bold">🖐️ VoxSurf</h1>
+              <p className="text-sm text-indigo-200">Hand + voice control mode</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-indigo-100">Voice</span>
+              <button
+                onClick={() => updateSettings({ voiceEnabled: !settings.voiceEnabled })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  settings.voiceEnabled ? 'bg-emerald-500' : 'bg-indigo-300/40'
+                }`}
+                title={settings.voiceEnabled ? 'Disable voice agent' : 'Enable voice agent'}
+                aria-label={settings.voiceEnabled ? 'Disable voice agent' : 'Enable voice agent'}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    settings.voiceEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
         </header>
 
         <div className="flex border-b border-gray-700 overflow-x-auto">
