@@ -13,7 +13,22 @@ export default function HomeTab({ settings, updateSettings }) {
     handTracking: false,
     activeGesture: 'none',
     contextMode: 'browser',
+    voiceEnabled: settings.voiceEnabled,
+    voiceListening: false,
+    voiceLastCommand: '',
+    voiceLastHeard: '',
   });
+  const [voiceDraft, setVoiceDraft] = useState({
+    openaiKey: settings.openaiKey || '',
+    wakeWord: settings.wakeWord || 'hey vox',
+  });
+
+  useEffect(() => {
+    setVoiceDraft({
+      openaiKey: settings.openaiKey || '',
+      wakeWord: settings.wakeWord || 'hey vox',
+    });
+  }, [settings.openaiKey, settings.wakeWord]);
 
   useEffect(() => {
     chrome.storage.local.get(['voxsurfStats'], (result) => {
@@ -76,6 +91,29 @@ export default function HomeTab({ settings, updateSettings }) {
             <span>Context Mode</span>
             <span className="text-emerald-300 capitalize">{liveStatus.contextMode || 'browser'}</span>
           </div>
+          <div className="flex items-center justify-between">
+            <span>Voice Agent</span>
+            <span
+              className={
+                liveStatus.voiceEnabled && liveStatus.voiceListening
+                  ? 'text-green-400'
+                  : liveStatus.voiceEnabled
+                    ? 'text-yellow-300'
+                    : 'text-gray-400'
+              }
+            >
+              {liveStatus.voiceEnabled
+                ? liveStatus.voiceListening
+                  ? 'Listening'
+                  : 'Enabled (idle)'
+                : 'Disabled'}
+            </span>
+          </div>
+          {liveStatus.voiceLastCommand && (
+            <div className="text-xs text-gray-400">
+              Last Voice Command: <span className="text-indigo-300">{liveStatus.voiceLastCommand}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -99,20 +137,77 @@ export default function HomeTab({ settings, updateSettings }) {
 
       <div className="bg-gray-800 rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">Master Controls</h2>
-        <div className="flex items-center justify-between">
-          <span>Hand Mode</span>
-          <button
-            onClick={() => updateSettings({ handEnabled: !settings.handEnabled })}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              settings.handEnabled ? 'bg-indigo-600' : 'bg-gray-600'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                settings.handEnabled ? 'translate-x-6' : 'translate-x-1'
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span>Hand Mode</span>
+            <button
+              onClick={() => updateSettings({ handEnabled: !settings.handEnabled })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                settings.handEnabled ? 'bg-indigo-600' : 'bg-gray-600'
               }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  settings.handEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span>Voice Agent</span>
+            <button
+              onClick={() => updateSettings({ voiceEnabled: !settings.voiceEnabled })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                settings.voiceEnabled ? 'bg-indigo-600' : 'bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  settings.voiceEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Wake Word</label>
+            <input
+              type="text"
+              value={voiceDraft.wakeWord}
+              onChange={(event) =>
+                setVoiceDraft((prev) => ({ ...prev, wakeWord: event.target.value }))
+              }
+              onBlur={() =>
+                updateSettings({
+                  wakeWord: voiceDraft.wakeWord.trim() || 'hey vox',
+                })
+              }
+              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+              placeholder="hey vox"
             />
-          </button>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">OpenAI API Key</label>
+            <input
+              type="password"
+              value={voiceDraft.openaiKey}
+              onChange={(event) =>
+                setVoiceDraft((prev) => ({ ...prev, openaiKey: event.target.value }))
+              }
+              onBlur={() =>
+                updateSettings({
+                  openaiKey: voiceDraft.openaiKey.trim(),
+                })
+              }
+              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+              placeholder="sk-..."
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              Whisper voice agent uses this key for transcription and intro summaries.
+            </p>
+          </div>
         </div>
       </div>
     </div>

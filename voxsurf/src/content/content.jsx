@@ -5,6 +5,7 @@ import GestureCursor from './components/GestureCursor';
 import CalibrationOverlay from './components/CalibrationOverlay';
 import { useFaceMesh } from './hooks/useFaceMesh';
 import { useGesture } from './hooks/useGesture';
+import { useWhisperVoiceAgent } from './hooks/useWhisperVoiceAgent';
 import '../styles.css';
 
 function normalizeSettings(incoming) {
@@ -18,6 +19,22 @@ function normalizeSettings(incoming) {
     normalized.handEnabled = true;
   }
 
+  if (normalized.sensitivity === undefined) {
+    normalized.sensitivity = 1.0;
+  }
+
+  if (normalized.voiceEnabled === undefined) {
+    normalized.voiceEnabled = false;
+  }
+
+  if (normalized.wakeWord === undefined) {
+    normalized.wakeWord = 'hey vox';
+  }
+
+  if (normalized.openaiKey === undefined) {
+    normalized.openaiKey = '';
+  }
+
   return normalized;
 }
 
@@ -25,6 +42,9 @@ function VoxSurfApp() {
   const [settings, setSettings] = React.useState({
     handEnabled: true,
     sensitivity: 1.0,
+    voiceEnabled: false,
+    wakeWord: 'hey vox',
+    openaiKey: '',
   });
 
   const [isCalibrating, setIsCalibrating] = React.useState(false);
@@ -32,11 +52,16 @@ function VoxSurfApp() {
 
   const { handLandmarks, isTracking } = useFaceMesh(settings.handEnabled);
   const gesture = useGesture(settings, handLandmarks);
+  const voiceAgent = useWhisperVoiceAgent(settings);
   const statusRef = React.useRef({
     handEnabled: settings.handEnabled,
     handTracking: isTracking,
     activeGesture: gesture.activeGesture,
     contextMode: gesture.contextMode,
+    voiceEnabled: settings.voiceEnabled,
+    voiceListening: voiceAgent.isListening,
+    voiceLastCommand: voiceAgent.lastCommand,
+    voiceLastHeard: voiceAgent.lastHeard,
   });
 
   React.useEffect(() => {
@@ -45,8 +70,21 @@ function VoxSurfApp() {
       handTracking: isTracking,
       activeGesture: gesture.activeGesture,
       contextMode: gesture.contextMode,
+      voiceEnabled: settings.voiceEnabled,
+      voiceListening: voiceAgent.isListening,
+      voiceLastCommand: voiceAgent.lastCommand,
+      voiceLastHeard: voiceAgent.lastHeard,
     };
-  }, [settings.handEnabled, isTracking, gesture.activeGesture, gesture.contextMode]);
+  }, [
+    settings.handEnabled,
+    settings.voiceEnabled,
+    isTracking,
+    gesture.activeGesture,
+    gesture.contextMode,
+    voiceAgent.isListening,
+    voiceAgent.lastCommand,
+    voiceAgent.lastHeard,
+  ]);
 
   React.useEffect(() => {
     chrome.storage.sync.get(['voxsurfSettings'], (result) => {
@@ -105,6 +143,11 @@ function VoxSurfApp() {
         isDwelling={gesture.isDwelling}
         dwellProgress={gesture.dwellProgress}
         contextMode={gesture.contextMode}
+        voiceEnabled={settings.voiceEnabled}
+        voiceListening={voiceAgent.isListening}
+        voiceProcessing={voiceAgent.isProcessing}
+        voiceLastHeard={voiceAgent.lastHeard}
+        voiceError={voiceAgent.error}
       />
       {isCalibrating && (
         <CalibrationOverlay

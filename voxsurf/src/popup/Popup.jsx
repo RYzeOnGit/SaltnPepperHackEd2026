@@ -19,6 +19,18 @@ function normalizeSettings(incoming) {
     normalized.sensitivity = 1.0;
   }
 
+  if (normalized.voiceEnabled === undefined) {
+    normalized.voiceEnabled = false;
+  }
+
+  if (normalized.wakeWord === undefined) {
+    normalized.wakeWord = 'hey vox';
+  }
+
+  if (normalized.openaiKey === undefined) {
+    normalized.openaiKey = '';
+  }
+
   return normalized;
 }
 
@@ -27,6 +39,9 @@ export default function Popup() {
   const [settings, setSettings] = useState({
     handEnabled: true,
     sensitivity: 1.0,
+    voiceEnabled: false,
+    wakeWord: 'hey vox',
+    openaiKey: '',
   });
 
   useEffect(() => {
@@ -57,7 +72,7 @@ export default function Popup() {
       <div className="flex flex-col h-full">
         <header className="bg-indigo-600 p-4 text-center">
           <h1 className="text-2xl font-bold">🖐️ VoxSurf</h1>
-          <p className="text-sm text-indigo-200">Hand gesture control mode</p>
+          <p className="text-sm text-indigo-200">Hand + voice control mode</p>
         </header>
 
         <div className="flex border-b border-gray-700 overflow-x-auto">

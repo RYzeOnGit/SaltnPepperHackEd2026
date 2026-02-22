@@ -1,11 +1,12 @@
 # VoxSurf 🖐️
 
-A hand-gesture Chrome extension for hands-free web browsing using MediaPipe hand tracking.
+A hand-gesture + wake-word voice Chrome extension for hands-free web browsing.
 
 ## Features
 
 - **Hand Cursor**: Move cursor with index finger pointing
 - **Pinch Click**: Thumb + index pinch to click
+- **Whisper Voice Agent**: Say `hey vox` + command (OpenAI Whisper transcription)
 - **Smooth Scroll**: Inertial up/down scroll using 2-finger V gesture
 - **Fist Grab Scroll**: Drag-style scrolling with fist motion
 - **Navigation Gestures**: Thumbs up and 3-finger swipe for back/forward
@@ -39,9 +40,13 @@ A hand-gesture Chrome extension for hands-free web browsing using MediaPipe hand
 ## Setup
 
 1. Open the extension popup
-2. Open the "Hands" tab
-3. Tune sensitivity
-4. Run hand calibration
+2. Open the "Home" tab and configure voice:
+   - Enable Voice Agent
+   - Add OpenAI API key
+   - Set wake word (default: `hey vox`)
+3. Open the "Hands" tab
+4. Tune sensitivity
+5. Run hand calibration
 
 ## Usage
 
@@ -58,6 +63,12 @@ A hand-gesture Chrome extension for hands-free web browsing using MediaPipe hand
 ### Demo Guide
 
 - Full live-demo script: `HAND_DEMO.md`
+
+### Voice Examples
+
+- `hey vox search mrbeast on youtube`
+- `hey vox summarize this section`
+- `hey vox summarize comments section`
 
 ## Tech Stack
 

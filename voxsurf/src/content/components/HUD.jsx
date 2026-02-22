@@ -35,7 +35,19 @@ const MODE_HINTS = {
   dino: 'Pinch to jump, 2 fingers hold duck, hold-pinch on UI to click mode buttons.',
 };
 
-export default function HUD({ settings, isTracking, activeGesture, isDwelling, dwellProgress, contextMode }) {
+export default function HUD({
+  settings,
+  isTracking,
+  activeGesture,
+  isDwelling,
+  dwellProgress,
+  contextMode,
+  voiceEnabled,
+  voiceListening,
+  voiceProcessing,
+  voiceLastHeard,
+  voiceError,
+}) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [position, setPosition] = useState({ top: '10px', right: '10px', bottom: 'auto', left: 'auto' });
   const [isDragging, setIsDragging] = useState(false);
@@ -111,6 +123,25 @@ export default function HUD({ settings, isTracking, activeGesture, isDwelling, d
   const gestureText = GESTURE_LABELS[activeGesture] || 'Tracking hand';
   const modeLabel = MODE_LABELS[contextMode] || 'Browser';
   const modeHint = MODE_HINTS[contextMode] || MODE_HINTS.browser;
+  const voiceStatus = !voiceEnabled
+    ? 'Disabled'
+    : voiceError
+      ? 'Error'
+      : voiceProcessing
+        ? 'Processing'
+        : voiceListening
+          ? 'Listening'
+          : 'Idle';
+  const voiceStatusClass = !voiceEnabled
+    ? 'text-gray-400'
+    : voiceError
+      ? 'text-red-400'
+      : voiceProcessing
+        ? 'text-yellow-300'
+        : voiceListening
+          ? 'text-green-400'
+          : 'text-gray-300';
+  const heardPreview = (voiceLastHeard || '').trim();
 
   return (
     <div
@@ -157,6 +188,26 @@ export default function HUD({ settings, isTracking, activeGesture, isDwelling, d
         </div>
 
         <div className="text-xs text-gray-400 pt-1">{modeHint}</div>
+
+        <div className="pt-2 border-t border-gray-700/60">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-300">Voice</span>
+            <span className={voiceStatusClass}>{voiceStatus}</span>
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            Wake word: <span className="text-indigo-300">{settings.wakeWord || 'hey vox'}</span>
+          </div>
+          {heardPreview && (
+            <div className="text-xs text-gray-400 mt-1">
+              Heard: <span className="text-emerald-300">{heardPreview.slice(0, 80)}</span>
+            </div>
+          )}
+          {voiceError && (
+            <div className="text-xs text-red-300 mt-1">
+              {voiceError}
+            </div>
+          )}
+        </div>
 
         {isDwelling && (
           <div className="pt-2">

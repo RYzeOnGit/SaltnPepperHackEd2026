@@ -30,6 +30,10 @@
 
 4. **Configure the Extension**
    - Click the VoxSurf extension icon in Chrome toolbar
+   - Go to the "Home" tab
+   - Enable `Voice Agent` if you want wake-word voice commands
+   - Paste your OpenAI API key
+   - Set wake word (default: `hey vox`)
    - Go to the "Hands" tab
    - Set hand sensitivity
    - Click "Start Hand Calibration"
@@ -80,9 +84,16 @@ Then load the extension from the `dist` folder (it will auto-reload on changes).
    - `Alt+Shift+L` for next tab
    - `Alt+Shift+H` for previous tab
 
+7. **Whisper Voice Agent**
+   - Say `hey vox search mrbeast on youtube`
+   - Say `hey vox summarize this section`
+   - Or `hey vox summarize comments section`
+   - If wake word is spoken alone, say the command within ~9 seconds
+
 ## Troubleshooting
 
 - **Camera not working**: Ensure camera permissions are granted in Chrome settings
+- **Voice not working**: Enable microphone permission and verify OpenAI key in Home tab
 - **Tracking inaccurate**: Recalibrate with "Start Hand Calibration"
 - **Tab switching shortcut not working**: Click once on page background and retry `Alt+Shift+L/H`
 - **Dino not responding**: Click inside the game canvas once to focus input
@@ -90,5 +101,5 @@ Then load the extension from the `dist` folder (it will auto-reload on changes).
 ## Notes
 
 - The extension requires camera access for hand tracking
-- The extension does not use microphone or voice command input in this mode
+- Voice agent uses microphone + OpenAI Whisper when enabled
 - All settings are stored in Chrome's sync storage
