@@ -1,11 +1,12 @@
 {
   "name": "voxsurf",
   "version": "1.0.0",
-  "description": "Voice-first Chrome extension for hands-free web browsing with eye tracking",
+  "description": "Hand-gesture Chrome extension for hands-free web browsing",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "postbuild": "bash scripts/sync-dist-to-windows.sh",
     "preview": "vite preview"
   },
   "dependencies": {

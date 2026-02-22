@@ -5,8 +5,7 @@ export default function StatsPanel({ settings }) {
     commandsExecuted: 0,
     timeActive: 0,
     pagesVisited: 0,
-    clicksByGaze: 0,
-    clicksByVoice: 0,
+    clicksByHand: 0,
   });
 
   useEffect(() => {
@@ -51,12 +50,8 @@ export default function StatsPanel({ settings }) {
             <span className="text-2xl font-bold text-indigo-400">{stats.pagesVisited}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-gray-400">Gaze Clicks</span>
-            <span className="text-2xl font-bold text-green-400">{stats.clicksByGaze}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">Voice Clicks</span>
-            <span className="text-2xl font-bold text-purple-400">{stats.clicksByVoice}</span>
+            <span className="text-gray-400">Hand Clicks</span>
+            <span className="text-2xl font-bold text-green-400">{stats.clicksByHand || 0}</span>
           </div>
         </div>
       </div>
@@ -68,15 +63,13 @@ export default function StatsPanel({ settings }) {
               commandsExecuted: 0,
               timeActive: 0,
               pagesVisited: 0,
-              clicksByGaze: 0,
-              clicksByVoice: 0,
+              clicksByHand: 0,
             }});
             setStats({
               commandsExecuted: 0,
               timeActive: 0,
               pagesVisited: 0,
-              clicksByGaze: 0,
-              clicksByVoice: 0,
+              clicksByHand: 0,
             });
           }}
           className="w-full bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-medium"

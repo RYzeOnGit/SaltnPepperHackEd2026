@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "VoxSurf",
   "version": "1.0.0",
-  "description": "Voice-first hands-free web browsing with eye tracking and AI-powered command understanding",
+  "description": "Hand-gesture hands-free web browsing with MediaPipe tracking",
   "permissions": [
     "storage",
     "tabs",

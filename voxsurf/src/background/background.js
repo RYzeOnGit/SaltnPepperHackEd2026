@@ -19,16 +19,8 @@ chrome.runtime.onInstalled.addListener(() => {
   // Initialize default settings
   chrome.storage.sync.set({
     voxsurfSettings: {
-      voiceEnabled: true,
-      eyeEnabled: true,
-      openaiKey: '',
-      wakeWord: '',
+      handEnabled: true,
       sensitivity: 1.0,
-      gazeSmoothing: 0.25,
-      highlightColor: 'blue',
-      showLabels: true,
-      showGazeDot: false,
-      readingSpeed: 1.0,
     },
   });
 
@@ -38,8 +30,7 @@ chrome.runtime.onInstalled.addListener(() => {
       commandsExecuted: 0,
       timeActive: 0,
       pagesVisited: 0,
-      clicksByGaze: 0,
-      clicksByVoice: 0,
+      clicksByHand: 0,
     },
   });
 });

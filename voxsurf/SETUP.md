@@ -4,7 +4,6 @@
 
 - Node.js 18+ and npm
 - Google Chrome browser
-- OpenAI API key (for AI features)
 
 ## Installation Steps
 
@@ -19,6 +18,9 @@
    npm run build
    ```
    This will create a `dist` folder with the compiled extension.
+   In WSL, this also auto-syncs `dist` to Windows at:
+   - Default: `/mnt/c/Users/<detected-user>/Desktop/voxsurf-dist`
+   - Override with env var: `VOXSURF_WINDOWS_DIST_DIR=/mnt/c/Users/<you>/...`
 
 3. **Load Extension in Chrome**
    - Open Chrome and navigate to `chrome://extensions/`
@@ -28,10 +30,9 @@
 
 4. **Configure the Extension**
    - Click the VoxSurf extension icon in Chrome toolbar
-   - Go to the "Voice" tab
-   - Enter your OpenAI API key
-   - Go to the "Eyes" tab
-   - Click "Start Calibration" to calibrate eye tracking
+   - Go to the "Hands" tab
+   - Set hand sensitivity
+   - Click "Start Hand Calibration"
 
 ## Development Mode
 
@@ -45,32 +46,42 @@ Then load the extension from the `dist` folder (it will auto-reload on changes).
 
 ## Features to Test
 
-1. **Voice Commands**
-   - Say "scroll down" or "scroll up"
-   - Say "go back" or "reload"
-   - Say "click that" while looking at an element
-   - Say "read this" while looking at text
+1. **Point + Click**
+   - Point with index finger to move cursor
+   - Pinch thumb+index to click
 
-2. **Eye Tracking**
-   - Look at different elements to see highlights
-   - Wink with left eye for left click
-   - Wink with right eye for right click
+2. **Smooth Scrolling**
+   - Use two fingers (V shape) to scroll
+   - Make a fist and move up/down for grab-scroll
 
-3. **AI Features**
-   - Say "what's on this page" for page analysis
-   - Say "summarize this" while looking at content
-   - Say "fill this form" on form pages
+3. **YouTube Controls**
+   - Pinch to toggle play/pause
+   - Two-finger left/right to seek ±10s
+   - Two-finger up/down for volume
+   - Palm to mute/unmute
+
+4. **Dino Controls**
+   - Open a Dino web version (e.g. chromedino.com)
+   - Pinch to jump, fist-hold to duck, thumbs-up to restart
+
+5. **Instagram Reels**
+   - Open instagram.com/reels
+   - Use two-finger up/down to move between reels
+   - Pinch to pause/play current reel
+
+6. **Tab Switching**
+   - `Alt+Shift+L` for next tab
+   - `Alt+Shift+H` for previous tab
 
 ## Troubleshooting
 
 - **Camera not working**: Ensure camera permissions are granted in Chrome settings
-- **Voice not working**: Check microphone permissions and ensure Web Speech API is supported
-- **AI commands failing**: Verify OpenAI API key is correct and has credits
-- **Eye tracking inaccurate**: Recalibrate using the "Start Calibration" button
+- **Tracking inaccurate**: Recalibrate with "Start Hand Calibration"
+- **Tab switching shortcut not working**: Click once on page background and retry `Alt+Shift+L/H`
+- **Dino not responding**: Click inside the game canvas once to focus input
 
 ## Notes
 
-- The extension requires camera access for eye tracking
-- The extension requires microphone access for voice commands
-- OpenAI API calls are made directly from your browser (your API key is stored locally)
+- The extension requires camera access for hand tracking
+- The extension does not use microphone or voice command input in this mode
 - All settings are stored in Chrome's sync storage
