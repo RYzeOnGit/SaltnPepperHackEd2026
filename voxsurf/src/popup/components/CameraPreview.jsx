@@ -6,7 +6,7 @@ export default function CameraPreview({ settings }) {
   const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
-    if (!settings.eyeEnabled) {
+    if (!settings.handEnabled) {
       setIsActive(false);
       return;
     }
@@ -41,7 +41,7 @@ export default function CameraPreview({ settings }) {
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
 
-        // Draw placeholder for face mesh overlay
+        // Draw placeholder for hand tracking preview
         ctx.strokeStyle = '#3B82F6';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -62,12 +62,12 @@ export default function CameraPreview({ settings }) {
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [settings.eyeEnabled]);
+  }, [settings.handEnabled]);
 
-  if (!settings.eyeEnabled) {
+  if (!settings.handEnabled) {
     return (
       <div className="bg-gray-800 rounded-lg p-6">
-        <p className="text-gray-400 text-center">Enable eye tracking to see camera preview</p>
+        <p className="text-gray-400 text-center">Enable hand mode to see camera preview</p>
       </div>
     );
   }
@@ -95,7 +95,7 @@ export default function CameraPreview({ settings }) {
         )}
       </div>
       <p className="text-sm text-gray-400 mt-2">
-        Face mesh and iris tracking overlay will appear here when active
+        Hand tracking preview is active while gesture mode is enabled
       </p>
     </div>
   );

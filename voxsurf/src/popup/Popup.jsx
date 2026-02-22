@@ -1,50 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import HomeTab from './components/HomeTab';
-import VoiceSettings from './components/VoiceSettings';
 import EyeSettings from './components/EyeSettings';
 import CameraPreview from './components/CameraPreview';
-import AISettings from './components/AISettings';
-import ReaderSettings from './components/ReaderSettings';
-import AppearanceSettings from './components/AppearanceSettings';
-import CustomCommands from './components/CustomCommands';
-import ChallengeMode from './components/ChallengeMode';
 import StatsPanel from './components/StatsPanel';
-import Onboarding from './components/Onboarding';
-import DemoMode from './components/DemoMode';
+
+function normalizeSettings(incoming) {
+  const normalized = { ...incoming };
+
+  if (normalized.handEnabled === undefined && normalized.eyeEnabled !== undefined) {
+    normalized.handEnabled = Boolean(normalized.eyeEnabled);
+  }
+
+  if (normalized.handEnabled === undefined) {
+    normalized.handEnabled = true;
+  }
+
+  if (normalized.sensitivity === undefined) {
+    normalized.sensitivity = 1.0;
+  }
+
+  if (normalized.voiceEnabled === undefined) {
+    normalized.voiceEnabled = false;
+  }
+
+  if (normalized.wakeWord === undefined) {
+    normalized.wakeWord = 'hey vox';
+  }
+
+  if (normalized.openaiKey === undefined) {
+    normalized.openaiKey = '';
+  }
+
+  return normalized;
+}
 
 export default function Popup() {
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   const [settings, setSettings] = useState({
-    voiceEnabled: true,
-    eyeEnabled: true,
-    openaiKey: '',
-    wakeWord: '',
+    handEnabled: true,
     sensitivity: 1.0,
-    gazeSmoothing: 0.25,
-    highlightColor: 'blue',
-    showLabels: true,
-    showGazeDot: false,
+    voiceEnabled: false,
+    wakeWord: 'hey vox',
+    openaiKey: '',
   });
 
   useEffect(() => {
-    // Check if onboarding is complete
-    chrome.storage.local.get(['onboardingComplete'], (result) => {
-      if (!result.onboardingComplete) {
-        setShowOnboarding(true);
-      }
-    });
-
     chrome.storage.sync.get(['voxsurfSettings'], (result) => {
       if (result.voxsurfSettings) {
-        setSettings({ ...settings, ...result.voxsurfSettings });
+        setSettings((prev) => normalizeSettings({ ...prev, ...result.voxsurfSettings }));
       }
     });
   }, []);
 
   const updateSettings = (updates) => {
-    const newSettings = { ...settings, ...updates };
+    const newSettings = normalizeSettings({ ...settings, ...updates });
     setSettings(newSettings);
+
     chrome.storage.sync.set({ voxsurfSettings: newSettings });
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
@@ -56,38 +67,39 @@ export default function Popup() {
     });
   };
 
-  if (showOnboarding) {
-    return (
-      <div className="w-full h-full">
-        <Onboarding
-          onComplete={() => {
-            setShowOnboarding(false);
-            chrome.storage.local.set({ onboardingComplete: true });
-          }}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="w-full h-full bg-gray-900 text-white">
       <div className="flex flex-col h-full">
         <header className="bg-indigo-600 p-4 text-center">
-          <h1 className="text-2xl font-bold">🎙️ VoxSurf</h1>
-          <p className="text-sm text-indigo-200">Hands-free web browsing</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-left">
+              <h1 className="text-2xl font-bold">🖐️ VoxSurf</h1>
+              <p className="text-sm text-indigo-200">Hand + voice control mode</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-indigo-100">Voice</span>
+              <button
+                onClick={() => updateSettings({ voiceEnabled: !settings.voiceEnabled })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  settings.voiceEnabled ? 'bg-emerald-500' : 'bg-indigo-300/40'
+                }`}
+                title={settings.voiceEnabled ? 'Disable voice agent' : 'Enable voice agent'}
+                aria-label={settings.voiceEnabled ? 'Disable voice agent' : 'Enable voice agent'}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    settings.voiceEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
         </header>
 
         <div className="flex border-b border-gray-700 overflow-x-auto">
           {[
             { id: 'home', label: 'Home' },
-            { id: 'voice', label: 'Voice' },
-            { id: 'eyes', label: 'Eyes' },
-            { id: 'ai', label: 'AI' },
-            { id: 'reading', label: 'Reading' },
-            { id: 'appearance', label: 'Appearance' },
-            { id: 'commands', label: 'Commands' },
-            { id: 'challenge', label: 'Challenge' },
-            { id: 'demo', label: 'Demo' },
+            { id: 'hands', label: 'Hands' },
             { id: 'stats', label: 'Stats' },
           ].map((tab) => (
             <button
@@ -108,32 +120,11 @@ export default function Popup() {
           {activeTab === 'home' && (
             <HomeTab settings={settings} updateSettings={updateSettings} />
           )}
-          {activeTab === 'voice' && (
-            <VoiceSettings settings={settings} updateSettings={updateSettings} />
-          )}
-          {activeTab === 'eyes' && (
+          {activeTab === 'hands' && (
             <>
               <EyeSettings settings={settings} updateSettings={updateSettings} />
               <CameraPreview settings={settings} />
             </>
-          )}
-          {activeTab === 'ai' && (
-            <AISettings settings={settings} updateSettings={updateSettings} />
-          )}
-          {activeTab === 'reading' && (
-            <ReaderSettings settings={settings} updateSettings={updateSettings} />
-          )}
-          {activeTab === 'appearance' && (
-            <AppearanceSettings settings={settings} updateSettings={updateSettings} />
-          )}
-          {activeTab === 'commands' && (
-            <CustomCommands settings={settings} updateSettings={updateSettings} />
-          )}
-          {activeTab === 'challenge' && (
-            <ChallengeMode settings={settings} />
-          )}
-          {activeTab === 'demo' && (
-            <DemoMode settings={settings} updateSettings={updateSettings} />
           )}
           {activeTab === 'stats' && (
             <StatsPanel settings={settings} />

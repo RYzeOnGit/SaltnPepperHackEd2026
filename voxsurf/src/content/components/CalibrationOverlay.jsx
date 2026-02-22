@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function CalibrationOverlay({ isActive, mode = 'gaze', onComplete, onCancel }) {
+export default function CalibrationOverlay({ isActive, mode = 'hand', onComplete, onCancel }) {
   const [currentPoint, setCurrentPoint] = useState(0);
   const [isCollecting, setIsCollecting] = useState(false);
 
@@ -96,10 +96,9 @@ export default function CalibrationOverlay({ isActive, mode = 'gaze', onComplete
           Point {currentPoint + 1} of {calibrationPoints.length}
         </div>
         <div style={{ fontSize: '14px', color: '#9CA3AF' }}>
-          {mode === 'head' 
-            ? (isCollecting ? 'Keep your head still while we collect data...' : 'Move your head to point the cursor at the dot...')
-            : (isCollecting ? 'Look at the dot and keep your head still...' : 'Move your eyes to the dot (keep head still)...')
-          }
+          {isCollecting
+            ? 'Hold your hand steady on the dot while we collect tracking data...'
+            : 'Move your hand so the cursor lands on each dot.'}
         </div>
       </div>
 

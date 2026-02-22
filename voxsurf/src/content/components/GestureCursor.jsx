@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 
 function GestureCursor({ cursorX, cursorY, settings }) {
-  if (!settings.eyeEnabled) {
+  if (!settings.handEnabled) {
     return null;
   }
 
@@ -41,6 +41,6 @@ export default memo(GestureCursor, (prevProps, nextProps) => {
   return (
     dx < 3 &&
     dy < 3 &&
-    prevProps.settings.eyeEnabled === nextProps.settings.eyeEnabled
+    prevProps.settings.handEnabled === nextProps.settings.handEnabled
   );
 });

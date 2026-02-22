@@ -1,17 +1,21 @@
-# VoxSurf 🎙️👁️
+# VoxSurf 🖐️
 
-A voice-first Chrome extension for fully hands-free web browsing using voice commands + eye tracking as a mouse replacement, powered by OpenAI for intelligent command understanding and page reasoning.
+A hand-gesture + wake-word voice Chrome extension for hands-free web browsing.
 
 ## Features
 
-- **Voice Commands**: Natural language commands powered by OpenAI GPT-4o
-- **Eye Tracking**: Gaze-based highlighting and interaction using MediaPipe FaceMesh
-- **Head Gestures**: Head pose-driven cursor movement
-- **Wink Clicks**: Left/right eye winks for mouse clicks
-- **AI-Powered Understanding**: Context-aware command interpretation
-- **Page Intelligence**: Automatic page analysis and summarization
-- **Reader Mode**: Text-to-speech for hands-free reading
-- **Customizable**: Extensive settings for sensitivity, colors, and behavior
+- **Hand Cursor**: Move cursor with index finger pointing
+- **Pinch Click**: Thumb + index pinch to click
+- **Whisper Voice Agent**: Say `hey vox` + command (OpenAI Whisper transcription)
+- **Smooth Scroll**: Inertial up/down scroll using 2-finger V gesture
+- **Fist Grab Scroll**: Drag-style scrolling with fist motion
+- **Navigation Gestures**: Thumbs up and 3-finger swipe for back/forward
+- **YouTube Mode**: Pinch play/pause, 2-finger seek/volume, palm mute
+- **Instagram Reels Mode**: 2-finger next/prev reel and pinch pause/play
+- **Dino Mode**: Two-finger jump, three-finger duck-hold, thumbs-up restart, point+hold-pinch UI click
+- **Tab Hotkeys**: `Alt+Shift+L` (next tab), `Alt+Shift+H` (previous tab)
+- **Dwell Click**: Hold pointer steady to auto-click
+- **Calibration + Sensitivity**: Tune hand control precision
 
 ## Installation
 
@@ -24,6 +28,9 @@ A voice-first Chrome extension for fully hands-free web browsing using voice com
    ```bash
    npm run build
    ```
+   In WSL, this also auto-syncs `dist` into Windows:
+   - Default target: `/mnt/c/Users/<detected-user>/Desktop/voxsurf-dist`
+   - Optional override: set `VOXSURF_WINDOWS_DIST_DIR`
 4. Load the extension in Chrome:
    - Open `chrome://extensions/`
    - Enable "Developer mode"
@@ -33,26 +40,35 @@ A voice-first Chrome extension for fully hands-free web browsing using voice com
 ## Setup
 
 1. Open the extension popup
-2. Navigate to the "Voice" tab
-3. Enter your OpenAI API key (required for AI features)
-4. Configure eye tracking settings in the "Eyes" tab
-5. Calibrate eye tracking using the "Start Calibration" button
+2. Open the "Home" tab and configure voice:
+   - Enable Voice Agent
+   - Add OpenAI API key
+   - Set wake word (default: `hey vox`)
+3. Open the "Hands" tab
+4. Tune sensitivity
+5. Run hand calibration
 
 ## Usage
 
-### Voice Commands
+### Hand Gestures
 
-- **Navigation**: "go back", "reload", "open new tab"
-- **Interaction**: "click that", "read this", "scroll down"
-- **AI Commands**: "what's on this page", "summarize this", "fill this form"
-- **Control**: "sleep", "wake up", "pause reading"
+- Point (index finger) to move cursor
+- Pinch (thumb + index) to click
+- Two fingers (V) to scroll
+- Fist for grab-scroll
+- Thumbs up for back
+- Three-finger swipe for back/forward
+- Hold still for dwell click
 
-### Eye Tracking
+### Demo Guide
 
-- Look at elements to highlight them
-- Wink with left eye for left click
-- Wink with right eye for right click
-- Dwell on elements for 1.2s for precision click
+- Full live-demo script: `HAND_DEMO.md`
+
+### Voice Examples
+
+- `hey vox search mrbeast on youtube`
+- `hey vox summarize this section`
+- `hey vox summarize comments section`
 
 ## Tech Stack
 
@@ -60,10 +76,7 @@ A voice-first Chrome extension for fully hands-free web browsing using voice com
 - React 18 + Vite
 - @crxjs/vite-plugin
 - Tailwind CSS
-- MediaPipe FaceMesh (via CDN)
-- OpenAI GPT-4o API
-- Mozilla Readability.js (via CDN)
-- Web Speech API
+- MediaPipe Hand Landmarker
 
 ## Development
 
