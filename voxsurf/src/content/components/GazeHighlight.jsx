@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
 
+const APPLE_COLORS = {
+  blue: '#007AFF',
+  green: '#34C759',
+  yellow: '#FFCC00',
+  purple: '#AF52DE',
+};
+
 function GazeHighlight({ gazeTarget, settings }) {
   const [highlightStyle, setHighlightStyle] = useState(null);
   const highlightRef = useRef(null);
@@ -16,21 +23,13 @@ function GazeHighlight({ gazeTarget, settings }) {
       const scrollX = window.scrollX || window.pageXOffset;
       const scrollY = window.scrollY || window.pageYOffset;
 
-      const colorMap = {
-        blue: '#3B82F6',
-        green: '#10B981',
-        yellow: '#F59E0B',
-        purple: '#8B5CF6',
-      };
+      const baseColor = APPLE_COLORS[settings.highlightColor] || APPLE_COLORS.blue;
 
-      const baseColor = colorMap[settings.highlightColor] || colorMap.blue;
-      
-      // Determine color based on element type
       const tagName = gazeTarget.tagName?.toLowerCase();
       let highlightColor = baseColor;
-      if (tagName === 'a') highlightColor = colorMap.green;
-      else if (tagName === 'input' || tagName === 'textarea') highlightColor = colorMap.yellow;
-      else if (tagName === 'button') highlightColor = colorMap.purple;
+      if (tagName === 'a') highlightColor = APPLE_COLORS.green;
+      else if (tagName === 'input' || tagName === 'textarea') highlightColor = APPLE_COLORS.yellow;
+      else if (tagName === 'button') highlightColor = APPLE_COLORS.purple;
 
       setHighlightStyle({
         position: 'absolute',
@@ -40,35 +39,29 @@ function GazeHighlight({ gazeTarget, settings }) {
         height: `${rect.height}px`,
         pointerEvents: 'none',
         zIndex: 2147483645,
-        border: `2px solid ${highlightColor}`,
-        borderRadius: '4px',
-        boxShadow: `0 0 20px ${highlightColor}40, 0 0 40px ${highlightColor}20`,
-        animation: 'pulse 2s ease-in-out infinite',
-        transition: 'all 0.15s ease',
-        transform: 'scale(1.02)',
+        border: `1.5px solid ${highlightColor}`,
+        borderRadius: '8px',
+        boxShadow: `0 0 16px ${highlightColor}30, 0 0 32px ${highlightColor}15`,
+        animation: 'gazeHighlightPulse 2.5s ease-in-out infinite',
+        transition: 'all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        transform: 'scale(1.01)',
         transformOrigin: 'center',
+        _color: highlightColor,
       });
     };
 
     updateHighlight();
 
-    // Update on scroll/resize
-    const handleUpdate = () => {
-      updateHighlight();
-    };
+    const handleUpdate = () => updateHighlight();
 
     window.addEventListener('scroll', handleUpdate, { passive: true });
     window.addEventListener('resize', handleUpdate, { passive: true });
 
-    // Use ResizeObserver for element size changes
     if (resizeObserverRef.current) {
       resizeObserverRef.current.disconnect();
     }
 
-    resizeObserverRef.current = new ResizeObserver(() => {
-      updateHighlight();
-    });
-
+    resizeObserverRef.current = new ResizeObserver(() => updateHighlight());
     resizeObserverRef.current.observe(gazeTarget);
 
     return () => {
@@ -84,18 +77,20 @@ function GazeHighlight({ gazeTarget, settings }) {
     return null;
   }
 
+  const color = highlightStyle._color || '#007AFF';
+
   return (
     <>
       <style>
         {`
-          @keyframes pulse {
+          @keyframes gazeHighlightPulse {
             0%, 100% {
-              opacity: 0.8;
-              box-shadow: 0 0 20px ${highlightStyle.boxShadow.match(/#[0-9A-Fa-f]{6}/)?.[0] || '#3B82F6'}40, 0 0 40px ${highlightStyle.boxShadow.match(/#[0-9A-Fa-f]{6}/)?.[0] || '#3B82F6'}20;
+              opacity: 0.75;
+              box-shadow: 0 0 16px ${color}30, 0 0 32px ${color}15;
             }
             50% {
               opacity: 1;
-              box-shadow: 0 0 30px ${highlightStyle.boxShadow.match(/#[0-9A-Fa-f]{6}/)?.[0] || '#3B82F6'}60, 0 0 60px ${highlightStyle.boxShadow.match(/#[0-9A-Fa-f]{6}/)?.[0] || '#3B82F6'}30;
+              box-shadow: 0 0 24px ${color}45, 0 0 48px ${color}20;
             }
           }
         `}

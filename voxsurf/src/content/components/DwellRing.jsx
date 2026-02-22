@@ -29,25 +29,37 @@ export default function DwellRing({ isDwelling, dwellProgress, target }) {
       }}
       viewBox={`0 0 ${radius * 2} ${radius * 2}`}
     >
+      <defs>
+        <filter id="dwellGlow">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      {/* Track */}
       <circle
         cx={radius}
         cy={radius}
         r={radius - 2}
         fill="none"
-        stroke="rgba(59, 130, 246, 0.3)"
-        strokeWidth="3"
+        stroke="rgba(0, 122, 255, 0.12)"
+        strokeWidth="2.5"
       />
+      {/* Progress */}
       <circle
         cx={radius}
         cy={radius}
         r={radius - 2}
         fill="none"
-        stroke="#3B82F6"
-        strokeWidth="3"
+        stroke="#007AFF"
+        strokeWidth="2.5"
         strokeDasharray={circumference}
         strokeDashoffset={offset}
         strokeLinecap="round"
         transform={`rotate(-90 ${radius} ${radius})`}
+        filter="url(#dwellGlow)"
         style={{
           transition: 'stroke-dashoffset 0.1s linear',
         }}

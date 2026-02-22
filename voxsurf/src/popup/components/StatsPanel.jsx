@@ -33,30 +33,21 @@ export default function StatsPanel({ settings }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Usage Statistics</h2>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">Commands Executed</span>
-            <span className="text-2xl font-bold text-indigo-400">{stats.commandsExecuted}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">Time Active</span>
-            <span className="text-2xl font-bold text-indigo-400">{formatTime(stats.timeActive)}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">Pages Visited</span>
-            <span className="text-2xl font-bold text-indigo-400">{stats.pagesVisited}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">Hand Clicks</span>
-            <span className="text-2xl font-bold text-green-400">{stats.clicksByHand || 0}</span>
-          </div>
+    <div className="space-y-3">
+      <div className="glass-panel p-5">
+        <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">Usage Statistics</h2>
+        <div className="space-y-0">
+          <StatRow label="Commands Executed" value={stats.commandsExecuted} color="text-apple-blue" />
+          <div className="glass-divider" />
+          <StatRow label="Time Active" value={formatTime(stats.timeActive)} color="text-apple-green" />
+          <div className="glass-divider" />
+          <StatRow label="Pages Visited" value={stats.pagesVisited} color="text-apple-purple" />
+          <div className="glass-divider" />
+          <StatRow label="Hand Clicks" value={stats.clicksByHand || 0} color="text-apple-teal" />
         </div>
       </div>
 
-      <div className="bg-gray-800 rounded-lg p-6">
+      <div className="glass-panel p-4">
         <button
           onClick={() => {
             chrome.storage.local.set({ voxsurfStats: {
@@ -72,11 +63,20 @@ export default function StatsPanel({ settings }) {
               clicksByHand: 0,
             });
           }}
-          className="w-full bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-medium"
+          className="glass-btn-danger w-full px-4 py-2.5 text-sm"
         >
           Reset Statistics
         </button>
       </div>
+    </div>
+  );
+}
+
+function StatRow({ label, value, color }) {
+  return (
+    <div className="flex items-center justify-between py-3">
+      <span className="text-sm text-white/50">{label}</span>
+      <span className={`text-xl font-semibold ${color} tabular-nums`}>{value}</span>
     </div>
   );
 }
